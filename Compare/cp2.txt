@@ -1,0 +1,3 @@
+My result: 5
+Optimal result: 5
+Time: Execution time: 30.25 seconds

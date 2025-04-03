@@ -1,24 +1,28 @@
 from ortools.linear_solver import pywraplp
 import numpy as np
 
-def read_input_from_file(filename):
-    with open(filename, 'r') as file:
-        lines = file.readlines()
-    N, D, A, B = map(int, lines[0].split())
-    dayoff = np.zeros((N+1, D+1))
-    for i in range(1, N+1):
-        numbers = list(map(int, lines[i].split()))
-        for j in range(0, len(numbers) - 1):
-            dayoff[i][numbers[j]] = 1
-    return N, D, A, B, dayoff
+# def read_input_from_file(filename):
+#     with open(filename, 'r') as file:
+#         lines = file.readlines()
+#     N, D, A, B = map(int, lines[0].split())
+#     dayoff = np.zeros((N+1, D+1))
+#     for i in range(1, N+1):
+#         numbers = list(map(int, lines[i].split()))
+#         for j in range(0, len(numbers) - 1):
+#             dayoff[i][numbers[j]] = 1
+#     return N, D, A, B, dayoff
 
 # N, D, A, B, dayoff = read_input_from_file('test.txt')
-# N, D, A, B = map(int, input().split())
-# dayoff = np.zeros((N+1, D+1))
-# for i in range(1, N+1):
-#     numbers = list(map(int, input().split()))
-#     for j in range(0, len(numbers) - 1):
-#         dayoff[i][numbers[j]] = 1
+
+#Nhap input bang tay
+N, D, A, B = map(int, input().split())
+dayoff = np.zeros((N+1, D+1))
+for i in range(1, N+1):
+    numbers = list(map(int, input().split()))
+    for j in range(0, len(numbers) - 1):
+        dayoff[i][numbers[j]] = 1
+
+
 solver = pywraplp.Solver.CreateSolver('SCIP')
 
 #tao bien rang buoc
@@ -50,8 +54,11 @@ for i in range(1, N+1):
         if dayoff[i][j] == 1:
             solver.Add(sum(x[i, j, k] for k in range(1, 5)) <= 0)
 
+#check thu cach  moi
+
+
 #bien muc tieu
-goal = solver.IntVar(0, solver.infinity(), 'goal')
+goal = solver.IntVar(0, D, 'goal')
 for i in range(1, N+1):
     solver.Add(goal >= sum(x[i, j, 4] for j in range(1, D+1)))
 
@@ -59,7 +66,7 @@ solver.Minimize(goal)
 status = solver.Solve()
 
 if status == pywraplp.Solver.OPTIMAL:
-    print(int(solver.Objective().Value()))
+    # print(int(solver.Objective().Value()))
     result = np.zeros((N+1, D+1))
     for i in range(1, N+1):
         for j in range(1, D+1):
@@ -67,9 +74,12 @@ if status == pywraplp.Solver.OPTIMAL:
                 if x[i, j, k].solution_value() == 1:
                     result[i][j] = k
     # in ket qua
+    # with open('output.txt', 'w') as file:
+    #     file.write(str(int(solver.Objective().Value())) + '\n')
+    #     for i in range(1, N+1):
+    #         file.write(' '.join([str(int(x)) for x in result[i][1:]]) + '\n')
     for i in range(1, N+1):
         print(' '.join([str(int(x)) for x in result[i][1:]]))
-
     #test case
     """
 8 6 1 3
@@ -82,16 +92,3 @@ if status == pywraplp.Solver.OPTIMAL:
  -1
  3 -1
     """
-
-"""
-x[i][j] = k
-i: nhan vien
-j: ngay
-k: ca lam viec
-
-x[i][j] + x[i][j+1] <= 4
---- chi sai khi ma x[i][j] = 4 va x[i][j+1] != 0
-4 * (x[i][j] - 4) + x[i][j+1] <= 0
-
-
-"""
