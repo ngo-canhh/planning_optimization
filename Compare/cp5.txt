@@ -1,0 +1,3 @@
+My result: 9
+Optimal result: 9
+Time: Execution time: 0.08 seconds
