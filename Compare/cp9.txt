@@ -2,6 +2,7 @@ Optimal result: 5
 ----------Heuristic----------
 My result: 5
 Time: Execution time: 0.00 seconds
+
 ----------Genetic Algorithm----------
 Use some parameters: population = 50, generations = 20, mutation = 0.1, crossover = 0.6
 My result: 8
