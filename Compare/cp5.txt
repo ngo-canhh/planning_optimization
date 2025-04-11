@@ -1,3 +1,8 @@
-My result: 9
 Optimal result: 9
-Time: Execution time: 0.08 seconds
+----------Heuristic----------
+My result: 9
+Time: Execution time: 0.12 seconds
+----------Genetic Algorithm----------
+Use some parameters: population = 50, generations = 20, mutation = 0.1, crossover = 0.6
+My result: 13
+Time: Execution time: 267.48 seconds
