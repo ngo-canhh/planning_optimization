@@ -9,3 +9,9 @@ Use some parameters: population = 50, generations = 20, mutation = 0.1, crossove
 My result: 8
 Time: Execution time: 10.40 seconds
 
+
+----------Hill climbing algorithm----------
+Use some parameters: Max_iteration = 1000
+My result: 9
+Time: Execution time: 13.57 seconds
+
