@@ -15,3 +15,9 @@ Use some parameters: Max_iteration = 1000
 My result: 15
 Time: Execution time: 75.92 seconds
 
+
+----------ACO----------
+Use some parameters: number of ants = 15, max iteration = 30, alpha = 1, beta = 2, rho = 0.1
+My result: 13
+Time: Execution time: 441.81 seconds
+
