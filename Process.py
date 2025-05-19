@@ -1,9 +1,9 @@
 from Linear_C import Linear
-from Heuristic_C import Heuristic_C
-from GA_C import GA_C
-from ACO_C import AntColony
-from HC_C import HC_C
-from SA_C import SimulatedAnnealingScheduler
+from Heuristic.Heuristic_C import Heuristic_C
+from GA.GA_C import GA_C
+from ACO.ACO_C import AntColony
+from ngocanhh.HC_C import HC_C
+from SA.SA_C import SimulatedAnnealingScheduler
 import numpy as np
 import random
 import time
