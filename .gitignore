@@ -1,0 +1,70 @@
+# Hệ điều hành
+.DS_Store
+Thumbs.db
+
+# Trình soạn thảo
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+dist/
+build/
+env/
+venv/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+
+# C/C++
+*.o
+*.out
+*.exe
+
+# Logs
+*.log
+
+# Backup files
+*~
+*.bak
+*.swp
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
+build/
+ios/Pods/
+macos/Pods/
+.android/
+.idea/
+
+# Nếu dùng môi trường ảo (virtualenv)
+.venv/
+ENV/
+env.bak/
+
+# Git
+.git/
+
+# Khác
+coverage/
