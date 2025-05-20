@@ -28,3 +28,6 @@ Use some parameters:  T0=5000, alpha=0.99, max_iterations=500, iterations_per_te
 My result: 9
 Time: Execution time: 123.43 seconds
 
+------------Simulated annealing ver nam ------------
+My result: 8
+Execution time: Execution time: 173.06 seconds
