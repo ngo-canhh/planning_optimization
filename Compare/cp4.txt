@@ -15,3 +15,15 @@ Use some parameters: Max_iteration = 1000
 My result: 3
 Time: Execution time: 3.78 seconds
 
+
+----------Hill climbing algorithm----------
+Use some parameters: Max_iteration = 1000
+My result: 3
+Time: Execution time: 3.78 seconds
+
+
+----------Hill climbing algorithm----------
+Use some parameters: Max_iteration = 1000
+My result: 3
+Time: Execution time: 3.78 seconds
+
