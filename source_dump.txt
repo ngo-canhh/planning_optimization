@@ -1,0 +1,2721 @@
+# ==================================================
+# Path: /Users/ngocanhh/Documents/Study/toiUuLapKeHoach/planning_optimization
+# Detected tech: python
+# ==================================================
+
+## DIRECTORY STRUCTURE
+```
+planning_optimization/
+├── .git/
+├── Evaluate/
+│   ├── Compare/
+│   │   ├── cp1.txt
+│   │   ├── cp10.txt
+│   │   ├── cp2.txt
+│   │   ├── cp3.txt
+│   │   ├── cp4.txt
+│   │   ├── cp5.txt
+│   │   ├── cp6.txt
+│   │   ├── cp7.txt
+│   │   ├── cp8.txt
+│   │   └── cp9.txt
+│   ├── OptimalOfTeach/
+│   │   ├── otm1.txt
+│   │   ├── otm10.txt
+│   │   ├── otm2.txt
+│   │   ├── otm3.txt
+│   │   ├── otm4.txt
+│   │   ├── otm5.txt
+│   │   ├── otm6.txt
+│   │   ├── otm7.txt
+│   │   ├── otm8.txt
+│   │   └── otm9.txt
+│   ├── Output/
+│   │   ├── SA/
+│   │   │   ├── .ipynb_checkpoints/
+│   │   │   │   ├── output1-checkpoint.txt
+│   │   │   │   ├── output10-checkpoint.txt
+│   │   │   │   ├── output3-checkpoint.txt
+│   │   │   │   ├── output4-checkpoint.txt
+│   │   │   │   └── output5-checkpoint.txt
+│   │   │   ├── output1.txt
+│   │   │   ├── output10.txt
+│   │   │   ├── output2.txt
+│   │   │   ├── output3.txt
+│   │   │   ├── output4.txt
+│   │   │   ├── output5.txt
+│   │   │   ├── output6.txt
+│   │   │   ├── output7.txt
+│   │   │   ├── output8.txt
+│   │   │   └── output9.txt
+│   │   ├── output1.txt
+│   │   ├── output10.txt
+│   │   ├── output2.txt
+│   │   ├── output3.txt
+│   │   ├── output4.txt
+│   │   ├── output5.txt
+│   │   ├── output6.txt
+│   │   ├── output7.txt
+│   │   ├── output8.txt
+│   │   └── output9.txt
+│   ├── ResultOFTeach/
+│   │   ├── rs1.txt
+│   │   ├── rs10.txt
+│   │   ├── rs2.txt
+│   │   ├── rs3.txt
+│   │   ├── rs4.txt
+│   │   ├── rs5.txt
+│   │   ├── rs6.txt
+│   │   ├── rs7.txt
+│   │   ├── rs8.txt
+│   │   └── rs9.txt
+│   ├── Testcase/
+│   │   ├── tc1.txt
+│   │   ├── tc10.txt
+│   │   ├── tc2.txt
+│   │   ├── tc3.txt
+│   │   ├── tc4.txt
+│   │   ├── tc5.txt
+│   │   ├── tc6.txt
+│   │   ├── tc7.txt
+│   │   ├── tc8.txt
+│   │   └── tc9.txt
+│   └── Check_and_Compare.ipynb
+├── HoangTranMinhDuc/
+│   ├── ACO.py
+│   └── CP.py
+├── NgoTriCanh/
+│   └── HC-SA.py
+├── NguyenChiCuong/
+│   ├── ACO.py
+│   ├── GA.py
+│   ├── Greedy.py
+│   ├── HC.py
+│   ├── LP.py
+│   └── SA.py
+├── TongTienManh/
+│   ├── CP.py
+│   └── SA.py
+├── TrinhHaiNam/
+│   ├── CP.py
+│   └── SA.py
+├── __pycache__/
+├── .gitignore
+├── README.md
+└── source_dump.txt
+```
+
+## FILE CONTENTS
+
+### TongTienManh/CP.py
+```py
+from ortools.sat.python import cp_model
+
+def read_input():
+    N, D, A, B = map(int, input().split())  # Số nhân viên, số ngày, số nhân viên tối thiểu & tối đa cho mỗi ca
+    f = []  # Danh sách ngày nghỉ cố định của mỗi nhân viên
+    rest_day = [[] for _ in range(N)]  # Danh sách ngày nghỉ tự động phát sinh do làm ca đêm
+    for _ in range(N):
+        days = list(map(int, input().split()))  # Nhập ngày nghỉ, -1 nếu không nghỉ
+        f.append([d for d in days if d != -1])
+    return N, D, A, B, f, rest_day
+
+def cp(N, D, A, B, F):
+    # N: số nhân viên
+    # D: số ngày
+    # A: số nhân viên tối thiểu cho mỗi ca
+    # B: số nhân viên tối đa cho mỗi ca
+    # F: danh sách ngày nghỉ cố định của mỗi nhân viên
+    model = cp_model.CpModel()
+    x = [[model.NewIntVar(0, 4, 'x{i}_{d}') for d in range(D)] for i in range(N)]  # Ma trận phân công: x[i][d] = ca làm của nhân viên i ngày d
+
+    # Ràng buộc 1: Nhân viên nghỉ vào ngày nghỉ cố định
+    for i in range(N):
+        for d in F[i]:
+            model.Add(x[i][d - 1] == 0)
+
+    # Ràng buộc 2: Nếu làm ca đêm hôm trước thì hôm sau phải nghỉ
+    for i in range(N):
+        for d in range(D - 1):
+            is_night = model.NewBoolVar(f'is_night_{i}_{d}')
+            model.Add(x[i][d] == 4).OnlyEnforceIf(is_night)
+            model.Add(x[i][d] != 4).OnlyEnforceIf(is_night.Not())
+            model.Add(x[i][d + 1] == 0).OnlyEnforceIf(is_night)
+    
+    # Ràng buộc 3: Số nhân viên mỗi ca trong mỗi ngày phải nằm trong khoảng [A, B]
+    for d in range(D):
+        for k in range(1, 5):  # Shift 1 to 4
+            is_on_shift = [model.NewBoolVar(f'is_on_shift_{i}_{d}_{k}') for i in range(N)]
+            for i in range(N):
+                model.Add(x[i][d] == k).OnlyEnforceIf(is_on_shift[i])
+                model.Add(x[i][d] != k).OnlyEnforceIf(is_on_shift[i].Not())
+            model.Add(sum(is_on_shift) >= A)
+            model.Add(sum(is_on_shift) <= B)
+
+    # Ràng buộc 4: Tổng số ca đêm tối đa của mỗi nhân viên <= y
+    y = model.NewIntVar(0, D, 'y')
+    for i in range(N):
+        night_shifts = [model.NewBoolVar(f'night_shift_{i}_{d}') for d in range(D)]
+        for d in range(D):
+            model.Add(x[i][d] == 4).OnlyEnforceIf(night_shifts[d])
+            model.Add(x[i][d] != 4).OnlyEnforceIf(night_shifts[d].Not())
+        model.Add(y >= sum(night_shifts))
+    
+    model.Minimize(y)  
+
+    # Solve the model
+    
+    solver = cp_model.CpSolver()
+    status = solver.solve(model)
+    
+    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        result = [[solver.Value(x[i][d]) for d in range(D)] for i in range(N)]
+        return result, solver.ObjectiveValue()
+    else:
+        return None, None
+    
+def print_sol(x):
+    if x is None:
+        print("No solution found.")
+    else:
+        for row in x:
+            print(" ".join(map(str, row)))
+
+if __name__ == "__main__":
+    N, D, A, B, f, rest_day = read_input()
+    x, min_y = cp(N, D, A, B, f)
+    print_sol(x)
+    #if min_y is not None:
+        #print(f"Min y (số ca đêm tối đa của 1 nhân viên): {min_y}")
+
+```
+
+### TongTienManh/SA.py
+```py
+import random
+import copy
+import math
+# Đọc dữ liệu đầu vào từ người dùng
+def read_input():
+    N, D, A, B = map(int, input().split())  # Số nhân viên, số ngày, số nhân viên tối thiểu & tối đa cho mỗi ca
+    f = []  # Danh sách ngày nghỉ cố định của mỗi nhân viên
+    rest_day = [[] for _ in range(N)]  # Danh sách ngày nghỉ tự động phát sinh do làm ca đêm
+    for _ in range(N):
+        days = list(map(int, input().split()))  # Nhập ngày nghỉ, -1 nếu không nghỉ
+        f.append([d for d in days if d != -1])
+    return N, D, A, B, f, rest_day
+
+def init_sol(N, D, A, B, f, rest_day):
+    x = [[0 for _ in range(D)] for _ in range(N)]  # Ma trận phân công: x[i][d] = ca làm của nhân viên i ngày d
+    night_count = [0] * N  # Đếm số ca đêm của mỗi nhân viên
+    count_staffs_of_shift_k_per_day = [[0] * 5 for _ in range(D)]  # Đếm số nhân viên mỗi ca (1–4) cho từng ngày
+
+    # Gán 0 cho những ngày nhân viên đã đăng ký nghỉ
+    for i in range(N):
+        for d in f[i]:
+            x[i][d - 1] = 0
+
+    # Gán ca làm theo vòng luân phiên 1–4 cho nhân viên chưa nghỉ
+    for d in range(D):
+        u = 1  # Bắt đầu từ ca 1
+        for i in range(N):
+            if (d + 1) in rest_day[i] or (d + 1) in f[i]:
+                continue  # Bỏ qua nếu ngày nghỉ hoặc ngày nghỉ bù
+            if u > 4:
+                u = 1  # Quay lại ca 1
+            x[i][d] = u
+            count_staffs_of_shift_k_per_day[d][u] += 1
+            # Nếu làm ca đêm, thêm ngày nghỉ kế tiếp vào danh sách nghỉ
+            if u == 4 and (d + 2) not in f[i]:
+                rest_day[i].append(d + 2)
+            u += 1
+    return x, night_count, count_staffs_of_shift_k_per_day
+
+def is_valid_solution(x, N, D, A, B, f, rest_day):
+    for d in range(D): # kiểm tra số nv mỗi ca trong mỗi ngày có thuộc [A, B] ko
+        for k in range(1, 5):
+            cnt = sum(1 for i in range(N) if x[i][d] == k)
+            if cnt < A or cnt > B:
+                return False 
+    
+    for i in range(N):
+        for d in range(D):
+            if d + 1 in f[i] or d + 1 in rest_day[i]:
+                if x[i][d] != 0:
+                    return False # check nếu nv đi làm vào ngày nghỉ cố định
+            if d > 0 and x[i][d-1] == 4 and x[i][d] != 0:
+                return False # check nếu hôm qua lm ca đêm nhưng vẫn lm hôm nay
+            
+    return True
+
+def calculate_cost(N, D, x):
+    night_count = [0] * len(x)
+    for i in range(N):
+        for d in range(D):
+            if x[i][d] == 4:
+                night_count[i] += 1
+    return max(night_count) # đưa ra số ca đêm max của 1 nv
+
+def create_neighbor(x, N, D, rest_day): # sinh hàng xóm
+    x_new = copy.deepcopy(x)
+    rest_day_new = copy.deepcopy(rest_day)
+    while not is_valid_solution(x_new, N, D, A, B, f, rest_day_new):
+        i = random.randint(0, N - 1)
+        d = random.randint(0, D - 1)
+        ca_lam_cu = x_new[i][d]
+        ca_lam_moi = random.choice([j for j in range(5) if j != ca_lam_cu and j not in f[i]]) 
+        if ca_lam_moi == 4:
+            if d < D - 1: 
+                if d + 2 not in f[i]:
+                    x_new[i][d + 1] = 0
+                    rest_day_new[i].append(d + 2) # thêm ngày hôm sau vào rest_day
+        x_new[i][d] = ca_lam_moi
+    return x_new, rest_day_new
+
+def s_a(N, D, A, B, f, rest_day, night_count):
+    x, night_count, count_staffs_of_shift_k_per_day = init_sol(N, D, A, B, f, rest_day)
+    best_x = copy.deepcopy(x)
+    T = 1.0
+    T_min = 0.00001
+    alpha = 0.9
+    while T > T_min:
+        i = 1
+        while i <= 100:
+            x_new, rest_day_new = create_neighbor(x, N, D, rest_day)
+            new_cost = calculate_cost(N, D, x_new)
+            old_cost = calculate_cost(N, D, x)
+            delta = new_cost - old_cost
+            if delta < 0 or random.uniform(0, 1) < pow(2.71828, -delta / T):
+                x = copy.deepcopy(x_new)
+                old_cost = new_cost
+                if new_cost < calculate_cost(N, D, best_x):
+                    best_x = copy.deepcopy(x_new)
+            i += 1
+        T *= alpha
+    return best_x
+
+def print_sol(x, N, D):
+    for row in x:
+        print(" ".join(map(str, row)))
+
+if __name__ == "__main__":
+    N, D, A, B, f, rest_day = read_input()
+    x, night_count, count_staffs_of_shift_k_per_day = init_sol(N, D, A, B, f, rest_day)
+    best_x = s_a(N, D, A, B, f, rest_day, night_count)
+    print_sol(best_x, N, D)
+    print(calculate_cost(best_x, N, D))
+```
+
+### TrinhHaiNam/CP.py
+```py
+"""Example of a simple nurse scheduling problem."""
+from ortools.sat.python import cp_model
+
+def nhap_input():
+    
+    print("nhập dữ liệu: ")
+    N, D, A, B = map(int, input().split())
+    
+    
+    days_off = []
+    for _ in range(N):
+        day_list = list(map(int, input().split()))
+        days = []
+        for day in day_list:
+            if day == -1:
+                break
+            days.append(day - 1)
+        days_off.append(days)
+    
+    return N, D, A, B, days_off
+
+def main():
+    
+    N, D, A, B, days_off = nhap_input()
+    num_shifts = 4  
+    staffs = range(N)
+    all_shifts = range(1, num_shifts + 1)  
+    all_days = range(D)
+    
+    model = cp_model.CpModel()
+    
+    
+    shifts = {}
+    for n in staffs:
+        for d in all_days:
+            for s in all_shifts:
+                shifts[(n, d, s)] = model.new_bool_var(f"shift_n{n}_d{d}_s{s}")
+    
+     
+    X = {}
+    for n in staffs:
+        for d in all_days:
+            X[(n, d)] = model.new_int_var(0, 4, f"X_{n}_{d}")
+            
+            model.add(X[(n, d)] == sum(s * shifts[(n, d, s)] for s in all_shifts))
+
+    # Ràng buộc 1: Mỗi ca phải có ít nhất A nhân viên và tối đa B nhân viên
+    for d in all_days:
+        for s in all_shifts:
+            model.add(A <= sum(shifts[(n, d, s)] for n in staffs))
+            model.add(sum(shifts[(n, d, s)] for n in staffs) <= B)
+
+    # Ràng buộc 2: Mỗi y tá làm tối đa một ca mỗi ngày
+    for n in staffs:
+        for d in all_days:
+            model.add_at_most_one(shifts[(n, d, s)] for s in all_shifts)
+
+    # Ràng buộc 3: Nghỉ sau khi làm ca đêm 
+    for n in staffs:
+        for d in range(D - 1):
+            model.add(shifts[(n, d, 4)] + sum(shifts[(n, d + 1, s)] for s in all_shifts) <= 1)
+
+    # Ràng buộc 4: Ngày nghỉ của nhân viên
+    for n in staffs:
+        for d in days_off[n]:
+            for s in all_shifts:
+                model.add(shifts[(n, d, s)] == 0)
+    
+    # Hàm mục tiêu: Giảm thiểu số ca đêm được phân công cho mỗi nhân viên
+    max_night_shifts = model.new_int_var(0, D, "max_night_shifts")   
+    for n in staffs:
+        model.add(sum(shifts[(n, d, 4)] for d in all_days) <= max_night_shifts) 
+    model.minimize(max_night_shifts)
+    solver = cp_model.CpSolver()
+    solver.parameters.linearization_level = 0
+    
+    
+    status = solver.solve(model)
+    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        print(f"Số ca đêm tối đa mà một nhân viên phải làm: {solver.value(max_night_shifts)}")
+        
+        if( status ==4 ):
+            print("FEASIBLE")
+        elif(status==3):
+            print("OPtimal")
+        for n in staffs:
+            row = []
+            for d in all_days:
+                value = 0
+                for s in all_shifts:
+                    if solver.value(shifts[(n, d, s)]) > 0.5:
+                        value = s
+                row.append(str(value))
+            print(" ".join(row))
+
+if __name__ == "__main__":
+    main()
+```
+
+### TrinhHaiNam/SA.py
+```py
+import numpy as np
+import random
+import math
+import time
+
+class SimulatedAnnealingScheduler:
+    def __init__(self, N, D, A, B, dayoff):
+        self.N = N
+        self.D = D
+        self.A = A
+        self.B = B
+        self.dayoff = dayoff
+
+    def is_valid_assignment(self, X):
+        for i in range(1, self.N + 1):
+            for d in range(1, self.D + 1):
+                if self.dayoff[i][d] == 1 and X[i][d] != 0:
+                    return False
+                if d < self.D and X[i][d] == 4 and X[i][d + 1] != 0:
+                    return False
+        for d in range(1, self.D + 1):
+            for shift in range(1, 5):
+                count = np.sum(X[:, d] == shift)
+                if count < self.A or count > self.B:
+                    return False
+        return True
+
+    def initialize_solution(self):
+        X = np.zeros((self.N + 1, self.D + 1), dtype=int)
+        for d in range(1, self.D + 1):
+            for shift in range(1, 5):
+                count = 0
+                tries = 0
+                while count < self.A and tries < 100 * self.N:
+                    i = random.randint(1, self.N)
+                    if X[i][d] != 0 or self.dayoff[i][d] == 1:
+                        tries += 1
+                        continue
+                    if d > 1 and X[i][d - 1] == 4:
+                        tries += 1
+                        continue
+                    X[i][d] = shift
+                    if shift == 4 and d < self.D:
+                        X[i][d + 1] = 0
+                    count += 1
+        return X
+
+    def evaluate(self, X):
+        penalty = 0
+        for i in range(1, self.N + 1):
+            for d in range(1, self.D + 1):
+                if self.dayoff[i][d] == 1 and X[i][d] != 0:
+                    penalty += 1000
+                if d < self.D and X[i][d] == 4 and X[i][d + 1] != 0:
+                    penalty += 1000
+        for d in range(1, self.D + 1):
+            for shift in range(1, 5):
+                count = np.sum(X[:, d] == shift)
+                if count < self.A:
+                    penalty += 100 * (self.A - count)
+                elif count > self.B:
+                    penalty += 100 * (count - self.B)
+
+        night_shifts = [np.sum(X[i] == 4) for i in range(1, self.N + 1)]
+        penalty += max(night_shifts) * 10
+        return penalty
+
+    def generate_neighbor(self, X):
+        new_X = X.copy()
+        i = random.randint(1, self.N)
+        d = random.randint(1, self.D)
+        if self.dayoff[i][d] == 1 or (d > 1 and new_X[i][d - 1] == 4):
+            return new_X
+
+        current_shift = new_X[i][d]
+        new_shift = random.randint(0, 4)
+        while new_shift == current_shift:
+            new_shift = random.randint(0, 4)
+
+        new_X[i][d] = new_shift
+        if new_shift == 4 and d < self.D:
+            new_X[i][d + 1] = 0
+        return new_X
+
+    def solve(self, max_iter=10000):
+        T = 100.0
+        T_min = 1e-2
+        alpha = 0.98
+        iteration = 0
+
+        X = self.initialize_solution()
+        best_X = X.copy()
+        best_score = self.evaluate(X)
+
+        while T > T_min and iteration < max_iter:
+            for _ in range(100):
+                neighbor = self.generate_neighbor(X)
+                score = self.evaluate(neighbor)
+                delta = score - best_score
+                if delta < 0 or random.random() < math.exp(-delta / T):
+                    X = neighbor
+                    if score < best_score:
+                        best_score = score
+                        best_X = neighbor
+            T *= alpha
+            iteration += 1
+
+        return best_X, best_score
+
+    def save_output(self, file_path, X, exec_time):
+        with open(file_path, 'w') as f:
+            for i in range(1, self.N + 1):
+                f.write(' '.join(map(str, map(int, X[i][1:self.D + 1]))) + '\n')
+            f.write(f"Execution time: {exec_time:.2f} seconds\n")
+
+    def print_output(self, X):
+        for i in range(1, self.N + 1):
+            print(' '.join(str(int(X[i][d])) for d in range(1, self.D + 1)))
+
+    def print_max_night_shifts(self, X):
+        night_shifts = [np.sum(X[i] == 4) for i in range(1, self.N + 1)]
+        print(f"Max night shifts: {max(night_shifts)}")
+
+```
+
+### HoangTranMinhDuc/CP.py
+```py
+from ortools.sat.python import cp_model
+
+
+def schedule_shifts(N, D, A, B, F):
+    model = cp_model.CpModel()
+
+    X = [[model.NewIntVar(0, 4, f'X_{i}_{d}') for d in range(D)] for i in range(N)]
+
+    # Constraint 1: Respect day-off constraints
+    for i in range(N):
+        for d in F[i]:
+            model.Add(X[i][d - 1] == 0)
+
+    # Constraint 2: If a staff works night shift (4), they rest the next day
+    for i in range(N):
+        for d in range(D - 1):
+            is_night_shift = model.NewBoolVar(f'is_night_shift_{i}_{d}')
+            is_next_day_off = model.NewBoolVar(f'is_next_day_off_{i}_{d}')
+
+            # Ràng buộc: is_night_shift đúng khi X[i][d] == 4
+            model.Add(X[i][d] == 4).OnlyEnforceIf(is_night_shift)
+            model.Add(X[i][d] != 4).OnlyEnforceIf(is_night_shift.Not())
+
+            # Ràng buộc: is_next_day_off đúng khi X[i][d+1] == 0
+            model.Add(X[i][d + 1] == 0).OnlyEnforceIf(is_next_day_off)
+            model.Add(X[i][d + 1] != 0).OnlyEnforceIf(is_next_day_off.Not())
+
+            model.AddImplication(is_night_shift, is_next_day_off)
+
+    # Constraint 3: Maintain A-B staff in each shift per day
+    for d in range(D):
+        for k in range(1, 5):  # Shift 1 to 4
+            is_on_shift = [model.NewBoolVar(f'is_on_shift_{i}_{d}_{k}') for i in range(N)]
+            for i in range(N):
+                model.Add(X[i][d] == k).OnlyEnforceIf(is_on_shift[i])
+                model.Add(X[i][d] != k).OnlyEnforceIf(is_on_shift[i].Not())
+            model.AddLinearConstraint(sum(is_on_shift), A, B)
+
+
+    max_night_shifts = model.NewIntVar(0, D, 'max_night_shifts')
+    for i in range(N):
+        night_shifts = [model.NewBoolVar(f'night_shift_{i}_{d}') for d in range(D)]
+        for d in range(D):
+            model.Add(X[i][d] == 4).OnlyEnforceIf(night_shifts[d])
+            model.Add(X[i][d] != 4).OnlyEnforceIf(night_shifts[d].Not())
+        model.Add(max_night_shifts >= sum(night_shifts))
+    model.Minimize(max_night_shifts)
+
+
+    solver = cp_model.CpSolver()
+    status = solver.Solve(model)
+
+    if status == cp_model.OPTIMAL:
+        print("\n Optimal")
+        result = [[solver.Value(X[i][d]) for d in range(D)] for i in range(N)]
+        return result, solver.ObjectiveValue()
+    else: 
+        if status == cp_model.FEASIBLE:
+            print("\n Feasible")
+            result = [[solver.Value(X[i][d]) for d in range(D)] for i in range(N)]
+            return result, solver.ObjectiveValue()
+        else:
+            return None, None
+def print_schedule(schedule):
+    if schedule is None:
+        print("Không tìm được lời giải.")
+    else:
+        for row in schedule:
+            print(" ".join(map(str, row)))
+
+if __name__ == "__main__":
+
+    N, D, A, B = map(int, input().split())
+    F = []
+
+    for i in range(N):
+        days = list(map(int, input().split()))
+        F.append(set(days[:-1]))
+
+
+    schedule, max_night_shifts = schedule_shifts(N, D, A, B, F)
+
+    print("\nMột lời giải khả thi:")
+    print_schedule(schedule)
+    if max_night_shifts is not None:
+        print(f"\nSố ca đêm tối đa: {int(max_night_shifts)}")
+
+
+```
+
+### HoangTranMinhDuc/ACO.py
+```py
+"""Có N nhân viên 1,2,…, N cần được xếp ca trực làm việc cho các ngày 1,  2, …, D. Mỗi ngày được chia thành 4 kíp: sáng, trưa, chiều, đêm. Biết rằng:
+Mỗi ngày, một nhân viên chỉ làm nhiều nhất 1 ca 
+Ngày hôm trước làm ca đêm thì hôm sau được nghỉ
+Mỗi ca trong mỗi ngày có ít nhất A nhân viên và nhiều nhất B nhân viên 
+F(i): danh sách các ngày nghỉ phép của nhân viên i 
+Xây dựng phương án xếp ca trực cho N nhân viên sao cho
+Số ca đêm nhiều nhất phân cho 1 nhân viên nào đó là nhỏ nhất
+A solution is represented by a matrix X[1..N][1..D] in which x[i][d] is the shift scheduled to staff i on day d (value 1 means shift morning; value 2 means shift afternoon; value 3 means shift evening; value 4 means shift night; value 0 means day-off)
+Input
+Line 1: contains 4 positive integers N, D, A, B (1 <= N <= 500, 1 <= D <= 200, 1 <= A <= B <= 500)
+Line i + 1 (i = 1, 2, . . ., N): contains a list of positive integers which are the day off of the staff i (days are indexed from 1 to D), terminated by -1
+ 
+Output
+Line i (i = 1, 2, . . ., N): write the i
+th
+ row of the solution matrix X
+"""
+
+from collections import defaultdict
+import random
+import numpy as np
+import time
+import os
+
+class ACO_D:
+    def __init__(self):
+        pass
+    
+    def read_input_from_file(self, filename):
+        with open(filename, 'r') as file:
+            lines = file.readlines()
+        
+        N, D, A, B = map(int, lines[0].split())
+        days_off = []
+        
+        for i in range(1, N+1):
+            day_list = list(map(int, lines[i].split()))
+            days = []
+            for day in day_list:
+                if day == -1:
+                    break
+                days.append(day - 1)  # Chuyển sang index 0-based
+            days_off.append(days)
+        
+        return N, D, A, B, days_off
+        
+    def improved_solution_construction(self, N, D, A, days_off, pheromone, alpha, beta):
+        try:
+            solution = np.zeros((N, D), dtype=np.int8)
+            
+            # Sắp xếp các ngày theo thứ tự khó giảm dần để xử lý trước
+            day_complexities = []
+            for d in range(D):
+                # Số nhân viên khả dụng cho ngày này
+                available_count = sum(1 for i in range(N) if d not in days_off[i])
+                day_complexities.append((d, available_count))
+            
+            # Sắp xếp theo số nhân viên khả dụng tăng dần (ngày khó xếp trước)
+            day_order = [d for d, _ in sorted(day_complexities, key=lambda x: x[1])]
+            
+            # Xây dựng lời giải theo thứ tự khó trước dễ sau
+            for d in day_order:
+                # Xác định nhân viên không thể làm việc vì ca đêm hôm trước
+                night_shifts_prev = np.zeros(N, dtype=bool)
+                if d > 0:
+                    night_shifts_prev = (solution[:, d-1] == 4)
+                
+                # Ưu tiên ca đêm trước để đảm bảo đủ người
+                shift_order = [4, 3, 2, 1]  # Ưu tiên ca đêm, chiều, trưa, sáng
+                
+                for s in shift_order:
+                    # Xác định nhân viên khả dụng
+                    available = np.ones(N, dtype=bool)
+                    
+                    # Nhân viên nghỉ phép
+                    for i in range(N):
+                        if d in days_off[i]:
+                            available[i] = False
+                    
+                    # Nhân viên đã được phân công ca khác trong ngày này
+                    assigned_today = (solution[:, d] > 0)
+                    available &= ~assigned_today
+                    
+                    # Nhân viên làm ca đêm ngày hôm trước
+                    available &= ~night_shifts_prev
+                    
+                    available_staff = np.where(available)[0]
+                    
+                    if len(available_staff) == 0:
+                        continue
+                    
+                    # Đảm bảo mỗi ca có ít nhất A nhân viên nếu có thể
+                    required_staff = min(A, len(available_staff))
+                    
+                    # Với bài toán lớn, cân nhắc phân phối đều nhân viên
+                    if N > 100:
+                        # Đếm số ca đã làm của mỗi nhân viên
+                        shift_counts = np.sum(solution > 0, axis=1)
+                        night_counts = np.sum(solution == 4, axis=1)
+                        
+                        # Tính heuristic và pheromone
+                        probabilities = []
+                        for i in available_staff:
+                            # Heuristic cao hơn cho người có ít ca làm việc
+                            eta = 1.0
+                            if s == 4:  # Ca đêm - ưu tiên người ít ca đêm
+                                eta = 1.0 / (night_counts[i] + 1)
+                            else:  # Ca khác - cân bằng tổng số ca
+                                eta = 1.0 / (shift_counts[i] + 1)
+                            
+                            tau = pheromone.get((i, d, s), 0.01)
+                            probabilities.append((tau ** alpha) * (eta ** beta))
+                        
+                        # Chuẩn hóa xác suất
+                        sum_prob = sum(probabilities)
+                        if sum_prob > 0:
+                            probabilities = [p / sum_prob for p in probabilities]
+                            
+                            # Chọn nhân viên dựa trên xác suất
+                            try:
+                                chosen_indices = np.random.choice(
+                                    len(available_staff), 
+                                    size=required_staff,
+                                    replace=False,
+                                    p=probabilities
+                                )
+                                for chosen_idx in chosen_indices:
+                                    chosen_staff = available_staff[chosen_idx]
+                                    solution[chosen_staff, d] = s
+                            except:
+                                # Fallback: sắp xếp theo số ca đã làm
+                                sorted_staff = sorted([(i, shift_counts[i]) for i in available_staff], 
+                                                    key=lambda x: x[1])
+                                for i, _ in sorted_staff[:required_staff]:
+                                    solution[i, d] = s
+                    else:
+                        # Cách tiếp cận hiện tại tốt cho bài toán nhỏ và vừa
+                        probabilities = np.zeros(len(available_staff))
+                        work_days = np.sum(solution > 0, axis=1)
+                        same_shifts = np.sum(solution == s, axis=1)
+                        
+                        for idx, i in enumerate(available_staff):
+                            eta = 1.0 / (work_days[i] + same_shifts[i] + 1)
+                            tau = pheromone.get((i, d, s), 0.01)
+                            probabilities[idx] = (tau ** alpha) * (eta ** beta)
+                        
+                        if probabilities.sum() > 0:
+                            probabilities = probabilities / probabilities.sum()
+                            try:
+                                chosen_indices = np.random.choice(
+                                    len(available_staff), 
+                                    size=min(required_staff, len(available_staff)),
+                                    replace=False,
+                                    p=probabilities
+                                )
+                                for chosen_idx in chosen_indices:
+                                    solution[available_staff[chosen_idx], d] = s
+                            except:
+                                # Fallback nếu gặp vấn đề với np.random.choice
+                                available_list = list(available_staff)
+                                random.shuffle(available_list)
+                                for i in available_list[:required_staff]:
+                                    solution[i, d] = s
+            
+            # Kiểm tra và đảm bảo mỗi nhân viên làm đủ số ngày tối thiểu (A)
+            staff_work_days = np.sum(solution > 0, axis=1)
+            for i in np.where(staff_work_days < A)[0]:
+                days_needed = A - staff_work_days[i]
+                if days_needed <= 0:
+                    continue
+                    
+                # Tìm các ngày có thể gán thêm
+                potential_days = []
+                for d in range(D):
+                    if solution[i, d] == 0 and d not in days_off[i]:
+                        # Kiểm tra điều kiện ca đêm hôm trước
+                        if d > 0 and solution[i, d-1] == 4:
+                            continue
+                        potential_days.append(d)
+                
+                if potential_days:
+                    # Ưu tiên các ngày có ít nhân viên
+                    day_loads = [(d, np.sum(solution[:, d] > 0)) for d in potential_days]
+                    day_loads.sort(key=lambda x: x[1])  # Sắp xếp theo số nhân viên tăng dần
+                    
+                    for d, _ in day_loads[:days_needed]:
+                        # Ưu tiên các ca có ít nhân viên hơn
+                        shift_counts = np.bincount(solution[:, d], minlength=5)
+                        shift_counts[0] = float('inf')  # Không tính ca nghỉ
+                        best_shift = np.argmin(shift_counts[1:5]) + 1  # Chọn ca có ít người nhất
+                        solution[i, d] = best_shift
+            
+            return solution.tolist()
+            
+        except Exception as e:
+            # Fallback đơn giản
+            fallback = [[0 for _ in range(D)] for _ in range(N)]
+            for i in range(N):
+                for d in range(D):
+                    if d not in days_off[i]:
+                        fallback[i][d] = (i + d) % 4 + 1
+            return fallback
+    
+    def enhanced_local_optimization(self, solution, N, D, A, B, days_off):
+        try:
+            solution_array = np.array(solution, dtype=np.int8)
+            improved = True
+            max_iterations = 5 if N > 200 else 10  # Giảm số vòng lặp cho bài toán cực lớn
+            iterations = 0
+            
+            while improved and iterations < max_iterations:
+                improved = False
+                iterations += 1
+                
+                # 1. Sửa vi phạm ràng buộc nghỉ sau ca đêm
+                for i in range(N):
+                    for d in range(D-1):
+                        if solution_array[i, d] == 4 and solution_array[i, d+1] > 0:
+                            solution_array[i, d+1] = 0  # Buộc nghỉ ngày hôm sau
+                            improved = True
+                
+                # 2. Đảm bảo đủ nhân viên cho mỗi ca (ít nhất A)
+                for d in range(D):
+                    shift_counts = np.bincount(solution_array[:, d], minlength=5)
+                    
+                    for s in range(1, 5):
+                        current_count = shift_counts[s]
+                        if current_count < A:
+                            # Tìm thêm nhân viên cho ca này
+                            needed = A - current_count
+                            candidates = []
+                            
+                            for i in range(N):
+                                # Kiểm tra các ràng buộc
+                                if d in days_off[i] or solution_array[i, d] > 0:
+                                    continue
+                                if d > 0 and solution_array[i, d-1] == 4:
+                                    continue
+                                if s == 4 and d < D-1 and solution_array[i, d+1] > 0:
+                                    continue
+                                    
+                                # Tính ưu tiên (càng thấp càng tốt)
+                                night_count = np.sum(solution_array[i] == 4)
+                                work_days = np.sum(solution_array[i] > 0)
+                                
+                                if s == 4:  # Ca đêm
+                                    priority = night_count * 10  # Ưu tiên thấp cho người nhiều ca đêm
+                                else:
+                                    priority = work_days
+                                
+                                candidates.append((i, priority))
+                            
+                            # Sắp xếp theo ưu tiên tăng dần
+                            candidates.sort(key=lambda x: x[1])
+                            
+                            # Gán thêm nhân viên
+                            for i, _ in candidates[:needed]:
+                                solution_array[i, d] = s
+                                improved = True
+                
+                # 3. Đảm bảo mỗi ca không quá B nhân viên
+                for d in range(D):
+                    shift_counts = np.bincount(solution_array[:, d], minlength=5)
+                    
+                    for s in range(1, 5):
+                        if shift_counts[s] > B:
+                            # Cần bớt nhân viên
+                            excess = shift_counts[s] - B
+                            staff_in_shift = [i for i in range(N) if solution_array[i, d] == s]
+                            
+                            # Ưu tiên loại bỏ nhân viên có nhiều ca làm việc
+                            staff_priorities = []
+                            for i in staff_in_shift:
+                                if s == 4:  # Ca đêm
+                                    night_count = np.sum(solution_array[i] == 4)
+                                    staff_priorities.append((i, night_count))
+                                else:
+                                    work_count = np.sum(solution_array[i] > 0)
+                                    staff_priorities.append((i, work_count))
+                            
+                            # Sắp xếp theo số ca giảm dần
+                            staff_priorities.sort(key=lambda x: x[1], reverse=True)
+                            
+                            # Loại bỏ nhân viên thừa
+                            for i, _ in staff_priorities[:excess]:
+                                solution_array[i, d] = 0  # Cho nghỉ
+                                improved = True
+                
+                # 4. Cân đối ca đêm
+                if iterations == 1:  # Chỉ làm một lần
+                    night_counts = np.sum(solution_array == 4, axis=1)
+                    if night_counts.size > 0:  # Kiểm tra mảng không rỗng
+                        max_nights = np.max(night_counts)
+                        if max_nights > 0:
+                            # Tìm nhân viên có nhiều ca đêm nhất
+                            staff_with_max = np.where(night_counts == max_nights)[0]
+                            
+                            for i in staff_with_max:
+                                # Tìm nhân viên có ít ca đêm để chuyển giao
+                                night_shifts = np.where(solution_array[i] == 4)[0]
+                                
+                                for d in night_shifts:
+                                    # Tìm nhân viên có thể làm ca đêm này
+                                    candidates = []
+                                    for j in range(N):
+                                        if j == i or d in days_off[j] or solution_array[j, d] > 0:
+                                            continue
+                                        if d > 0 and solution_array[j, d-1] == 4:
+                                            continue
+                                        if d < D-1 and solution_array[j, d+1] > 0:
+                                            continue
+                                            
+                                        night_count_j = night_counts[j]
+                                        if night_count_j < max_nights - 1:
+                                            candidates.append((j, night_count_j))
+                                    
+                                    # Sắp xếp theo số ca đêm tăng dần
+                                    candidates.sort(key=lambda x: x[1])
+                                    
+                                    if candidates:
+                                        chosen_j = candidates[0][0]
+                                        # Chuyển ca đêm sang nhân viên khác
+                                        solution_array[chosen_j, d] = 4
+                                        solution_array[i, d] = 0
+                                        improved = True
+                                        break  # Chỉ chuyển 1 ca mỗi lần
+            
+            return solution_array.tolist()
+            
+        except Exception as e:
+            return solution
+    
+    def simple_construction(self, N, D, A, B, days_off):
+        """Tạo lời giải đơn giản để sử dụng trong trường hợp có lỗi"""
+        solution = [[0 for _ in range(D)] for _ in range(N)]
+        
+        # Phân bố ca làm việc đều 
+        for d in range(D):
+            staff_per_shift = max(1, min(N // 4, B))  # Chia đều nhân viên cho 4 ca
+            
+            staff_idx = 0
+            for s in range(1, 5):
+                count = 0
+                while count < staff_per_shift and staff_idx < N:
+                    if d not in days_off[staff_idx]:
+                        solution[staff_idx][d] = s
+                        count += 1
+                    staff_idx += 1
+                    if staff_idx >= N:
+                        staff_idx = 0  # Quay lại từ đầu nếu cần
+                        
+            # Đảm bảo mỗi ca có ít nhất A nhân viên
+            for s in range(1, 5):
+                count = sum(1 for i in range(N) if solution[i][d] == s)
+                while count < A:
+                    for i in range(N):
+                        if solution[i][d] == 0 and d not in days_off[i]:
+                            solution[i][d] = s
+                            count += 1
+                            break
+                    else:
+                        break  # Không tìm thêm được nhân viên
+        
+        return solution
+    
+    def evaluate_solution(self, solution, N, D, A, B, days_off):
+        try:
+            penalty = 0
+            solution_array = np.array(solution)
+            
+            # 1. Ràng buộc ngày nghỉ phép
+            for i in range(N):
+                for day in days_off[i]:
+                    if solution_array[i, day] > 0:
+                        penalty += 1000
+            
+            # 2. Ràng buộc ca đêm liên tiếp
+            for i in range(N):
+                for d in range(D-1):
+                    if solution_array[i, d] == 4 and solution_array[i, d+1] > 0:
+                        penalty += 500
+            
+            # 3. Ràng buộc số nhân viên mỗi ca
+            for d in range(D):
+                shift_counts = np.bincount(solution_array[:, d], minlength=5)
+                for s in range(1, 5):
+                    # Phạt nếu ca không đủ hoặc quá nhiều nhân viên
+                    if shift_counts[s] < A:
+                        penalty += 200 * (A - shift_counts[s])
+                    if shift_counts[s] > B:
+                        penalty += 200 * (shift_counts[s] - B)
+            
+            # 4. Ràng buộc số ngày làm việc
+            work_days = np.sum(solution_array > 0, axis=1)
+            min_work_days = min(work_days) if len(work_days) > 0 else 0
+            max_work_days = max(work_days) if len(work_days) > 0 else 0
+            penalty += 50 * (max_work_days - min_work_days)
+            
+            # 5. Mục tiêu: giảm thiểu số ca đêm tối đa
+            night_shifts = np.sum(solution_array == 4, axis=1)
+            max_night_shifts = max(night_shifts) if len(night_shifts) > 0 else 0
+            penalty += 100 * max_night_shifts
+            
+            # Chất lượng càng cao khi penalty càng thấp
+            return 10000.0 / (penalty + 1.0)
+            
+        except Exception as e:
+            return 0.01  # Trả về chất lượng thấp nếu có lỗi
+    
+    def efficient_max_min_ant_system(self, colony_id, N, D, A, B, days_off, n_ants, iterations, result_queue=None):
+        try:
+            # Điều chỉnh tham số dựa trên kích thước bài toán
+            if N > 100:
+                alpha = 1.5 + 0.1 * colony_id
+                beta = 3.0 + 0.15 * colony_id
+                rho = 0.05 + 0.01 * colony_id
+            else:
+                alpha = 1.0 + 0.2 * colony_id
+                beta = 2.0 + 0.25 * colony_id
+                rho = 0.02 + 0.01 * colony_id
+            
+            # Giới hạn pheromone
+            tau_max = 5.0
+            tau_min = 0.01
+            
+            # Khởi tạo pheromone với dictionary mặc định
+            pheromone = defaultdict(lambda: tau_max)
+            
+            best_solution = None
+            best_quality = 0
+            stagnation_count = 0
+            last_improvement_iteration = 0
+            
+            # Tạo lời giải ban đầu
+            initial_solution = self.improved_solution_construction(N, D, A, days_off, pheromone, alpha, beta)
+            best_solution = [row[:] for row in initial_solution]
+            best_quality = self.evaluate_solution(best_solution, N, D, A, B, days_off)
+            
+            for it in range(iterations):
+                iteration_best_solution = None
+                iteration_best_quality = 0
+                
+                # Chỉ chạy optimization trên số kiến giảm dần
+                effective_n_ants = max(3, n_ants - it // 5)
+                
+                # Early stopping nếu không cải thiện sau nhiều vòng lặp
+                if it - last_improvement_iteration > 15:
+                    if result_queue is not None:
+                        result_queue.put((best_solution, best_quality, colony_id))
+                    return best_solution, best_quality
+                
+                # Mỗi kiến xây dựng một lời giải
+                for ant in range(effective_n_ants):
+                    solution = self.improved_solution_construction(N, D, A, days_off, pheromone, alpha, beta)
+                    
+                    # Tối ưu cục bộ với xác suất giảm dần theo vòng lặp
+                    if random.random() < max(0.1, 0.3 - it / (iterations * 2)):
+                        solution = self.enhanced_local_optimization(solution, N, D, A, B, days_off)
+                    
+                    # Đánh giá lời giải
+                    quality = self.evaluate_solution(solution, N, D, A, B, days_off)
+                    
+                    # Cập nhật lời giải tốt nhất vòng lặp
+                    if quality > iteration_best_quality:
+                        iteration_best_solution = [row[:] for row in solution]
+                        iteration_best_quality = quality
+                        
+                        # Cập nhật lời giải tốt nhất toàn cầu
+                        if quality > best_quality:
+                            best_solution = [row[:] for row in solution]
+                            best_quality = quality
+                            stagnation_count = 0
+                            last_improvement_iteration = it
+                        else:
+                            stagnation_count += 1
+                
+                # Bay hơi pheromone - chỉ cập nhật cho các phần tử có trong từ điển
+                for key in list(pheromone.keys()):
+                    pheromone[key] *= (1 - rho)
+                    # Xóa các giá trị gần với tau_min để tiết kiệm bộ nhớ
+                    if pheromone[key] < tau_min * 1.01:
+                        del pheromone[key]
+                
+                # Chọn giải pháp để cập nhật pheromone
+                if stagnation_count > 10:
+                    # Diversification: sử dụng lời giải tốt nhất vòng lặp
+                    update_solution = iteration_best_solution
+                    update_quality = iteration_best_quality
+                else:
+                    # Exploitation: sử dụng lời giải tốt nhất toàn cầu
+                    update_solution = best_solution
+                    update_quality = best_quality
+                
+                # Cập nhật pheromone chọn lọc (chỉ cập nhật các thành phần đã sử dụng)
+                if update_solution:
+                    for i in range(N):
+                        for d in range(D):
+                            s = update_solution[i][d]
+                            if s > 0:  # Chỉ cập nhật khi có ca làm việc
+                                pheromone[(i, d, s)] = min(tau_max, pheromone[(i, d, s)] + update_quality)
+                
+                # Điều chỉnh giới hạn pheromone theo tiến trình (thực hiện ít hơn)
+                if it % 15 == 0 and it > 0:
+                    ratio = (iterations - it) / iterations
+                    tau_max = 5.0 * ratio + 3.0 * (1 - ratio)
+                    tau_min = 0.01 * ratio + 0.05 * (1 - ratio)
+            
+            if result_queue is not None:
+                result_queue.put((best_solution, best_quality, colony_id))
+            return best_solution, best_quality
+        
+        except Exception as e:
+            # Tạo giải pháp đơn giản khi gặp lỗi
+            fallback_solution = self.simple_construction(N, D, A, B, days_off)
+            if result_queue is not None:
+                result_queue.put((fallback_solution, 0.01, colony_id))
+            return fallback_solution, 0.01
+    
+    def solve(self, N, D, A, B, dayoff):
+        """
+        Phương thức giải bài toán - đảm bảo tính đồng nhất với các thuật toán khác
+        dayoff[i][j] = 1 => nhân viên i nghỉ vào ngày j
+        """
+        # Chuyển đổi định dạng dayoff thành dạng danh sách mà thuật toán ACO sử dụng
+        days_off = []
+        for i in range(1, N+1):
+            staff_days_off = []
+            for j in range(1, D+1):
+                if dayoff[i][j] == 1:
+                    # Chuyển sang index 0-based cho ACO
+                    staff_days_off.append(j-1)
+            days_off.append(staff_days_off)
+        
+        start = time.time()
+        
+        # Thiết lập tham số dựa trên kích thước bài toán
+        if N < 15:
+            n_ants = 5
+            iterations = 30
+        elif N < 30:
+            n_ants = 10
+            iterations = 50
+        elif N < 100:
+            n_ants = 8
+            iterations = 40
+        else:
+            # Cho bài toán lớn, dùng tham số hiệu quả hơn
+            n_ants = max(5, min(8, N // 50))
+            iterations = max(20, min(30, D // 5))
+        
+        # Sử dụng single-process để đảm bảo độ ổn định
+        solution, _ = self.efficient_max_min_ant_system(0, N, D, A, B, days_off, n_ants, iterations, None)
+        
+        # Kiểm tra và sửa chữa lời giải cuối cùng
+        if N <= 200:  # Chỉ tối ưu cho bài toán không quá lớn
+            solution = self.enhanced_local_optimization(solution, N, D, A, B, days_off)
+        
+        # Chuyển đổi lời giải 0-indexed thành 1-indexed để khớp với định dạng output
+        result = np.zeros((N+1, D+1), dtype=int)
+        for i in range(N):
+            for d in range(D):
+                result[i+1][d+1] = solution[i][d]
+        
+        end = time.time()
+        
+        return result
+
+if __name__ == "__main__":
+    import sys
+    
+    if len(sys.argv) > 1:
+        tc_num = int(sys.argv[1])
+        filename = f'Testcase/tc{tc_num}.txt'
+        
+        aco = ACO_D()
+        N, D, A, B, days_off = aco.read_input_from_file(filename)
+        
+        # Chuyển đổi định dạng days_off sang dayoff matrix
+        dayoff = np.zeros((N+1, D+1))
+        for i in range(N):
+            for day in days_off[i]:
+                dayoff[i+1][day+1] = 1
+        
+        # Bắt đầu tính thời gian
+        start = time.time()
+        
+        # Giải bài toán
+        solution = aco.solve(N, D, A, B, dayoff)
+        
+        # Kết thúc tính thời gian
+        end = time.time()
+        
+        # Ghi kết quả ra file
+        os.makedirs('Output', exist_ok=True)
+        output_file = f'Output/output{tc_num}.txt'
+        with open(output_file, 'w') as f:
+            for i in range(1, N+1):
+                line = ' '.join(str(solution[i][d]) for d in range(1, D+1))
+                f.write(line + '\n')
+            f.write(f"Execution time: {end - start:.2f} seconds\n")
+
+```
+
+### NguyenChiCuong/Greedy.py
+```py
+import numpy as np
+import time
+class Heuristic_C:
+    def __init__(self):
+        pass
+        
+    def solve(self, N, D, A, B, dayoff):    
+        start = time.time()
+        x = np.zeros((N+1, D+1))
+
+        # Tính số ca đêm tối thiểu trung bình mỗi nhân viên
+        num_of_night_shifts = A * D
+        min_night_shifts = 0
+        if num_of_night_shifts % N != 0:
+            min_night_shifts = num_of_night_shifts // N + 1
+        else:
+            min_night_shifts = num_of_night_shifts // N
+
+        max_night_per_staff = np.zeros((N+1))
+        #print("min_night_shifts: ", min_night_shifts)
+
+        # Phân bổ ca đêm (ca 4)
+        for j in range(1, D+1):
+            # Đếm số nhân viên có thể làm việc trong ngày j
+            available_staff = []
+            for i in range(1, N+1):
+                if dayoff[i][j] == 0 and x[i][j-1] != 4 and x[i][j] == 0:  
+                    available_staff.append(i)
+            
+
+            # Kiểm tra tính khả thi
+            if len(available_staff) < 4 * A:
+                print(f"Không khả thi: Ngày {j} không đủ nhân viên ({len(available_staff)} < {4*A})")
+                break
+
+            # Phân bổ ca 4
+            nums = 0
+            available_staff.sort(key=lambda i: max_night_per_staff[i])
+            for i in available_staff:
+                if nums < A and max_night_per_staff[i] <= min_night_shifts:
+                    x[i][j] = 4
+                    nums += 1
+                    max_night_per_staff[i] += 1
+                if nums == A:
+                    break
+
+            # Nếu không đủ A nhân viên cho ca 4, thử phân bổ thêm
+            if nums < A:
+                remaining_staff = [i for i in available_staff if x[i][j] == 0]
+                remaining_staff.sort(key=lambda i: max_night_per_staff[i])
+                for i in remaining_staff:
+                    if x[i][j] == 0 and nums < A:
+                        x[i][j] = 4
+                        nums += 1
+                        max_night_per_staff[i] += 1
+                    if nums == A:
+                        break
+
+            if nums < A:
+                print(f"Vi phạm ràng buộc: Ngày {j} không đủ {A} nhân viên cho ca 4 (chỉ có {nums})")
+
+        print("max_night_per_staff: ", np.max(max_night_per_staff[1:]))
+
+        # Phân bổ ca ngày (ca 1, 2, 3)
+        for j in range(1, D+1):
+            # Lấy danh sách nhân viên có thể làm việc
+            available_staff = []
+            for i in range(1, N+1):
+                if dayoff[i][j] == 0 and x[i][j] == 0 and x[i][j-1] != 4:  # Không nghỉ phép và chưa được gán ca 4
+                    available_staff.append(i)
+
+            # Phân bổ ca 1, 2, 3
+            for shift in range(1, 4):
+                nums = 0
+                for i in available_staff:
+                    if x[i][j] == 0 and nums < A:
+                        x[i][j] = shift
+                        nums += 1
+                    if nums == A:
+                        break
+
+
+                if nums < A:
+                    print(f"Vi phạm ràng buộc: Ngày {j}, ca {shift} không đủ {A} nhân viên (chỉ có {nums})")
+
+        def check(x, N, D, A, B, dayoff):
+            # Kiểm tra vi phạm ngày nghỉ
+            for i in range(1, N + 1):
+                for d in range(1, D + 1):
+                    if dayoff[i][d] and x[i][d] != 0:
+                        return False
+
+            # Kiểm tra vi phạm số lượng nhân viên mỗi ca
+            for d in range(1, D + 1):
+                for shift in range(1, 5):
+                    count = np.sum(x[:, d] == shift)
+                    if count < A or count > B:
+                        return False
+
+            # Kiểm tra vi phạm ca đêm
+            for i in range(1, N + 1):
+                for d in range(1, D):
+                    if x[i][d] == 4 and x[i][d + 1] != 0:
+                        return False
+
+            return True
+        if check(x, N, D, A, B, dayoff):
+            print("Solution found.")
+            print("Lịch làm việc hợp lệ:")
+            for i in range(1, N + 1):
+                print(f"Nhân viên {i}: ", end='')
+                for d in range(1, D + 1):
+                    print(int(x[i][d]), end=' ')
+                print()
+            endtime = time.time()
+            print("Execution time: {:.2f} seconds".format(endtime - start))
+            return x
+        else:
+            print("Không tìm thấy lịch làm việc hợp lệ.")
+            return None
+        
+
+```
+
+### NguyenChiCuong/ACO.py
+```py
+import numpy as np
+import random
+import time
+
+def adjust_schedule(X, N, D, A, B, dayoff):
+    # Điều chỉnh lịch để mỗi ca có từ A đến B nhân viên
+    for d in range(1, D + 1):
+        for shift in range(1, 5):  # Các ca 1, 2, 3, 4
+            count = np.sum(X[:, d] == shift)
+            while count < A:
+                available = [i for i in range(1, N + 1) if X[i][d] == 0 and dayoff[i][d] == 0 and (d == 1 or X[i][d - 1] != 4)]
+                if not available:
+                    break
+                i = random.choice(available)
+                X[i][d] = shift
+                if shift == 4 and d < D:
+                    X[i][d + 1] = 0  # Nghỉ sau ca đêm
+                count += 1
+            while count > A:
+                assigned = [i for i in range(1, N + 1) if X[i][d] == shift]
+                if not assigned:
+                    break
+                i = random.choice(assigned)
+                X[i][d] = 0
+                count -= 1
+    # Sửa lỗi ca đêm (ngày sau ca đêm phải nghỉ)
+    for i in range(1, N + 1):
+        for d in range(1, D):
+            if X[i][d] == 4 and X[i][d + 1] != 0:
+                X[i][d + 1] = 0
+
+    # Đảm bảo các ca không bị thiếu
+    for d in range(1, D + 1):
+        for shift in range(1, 5):  # Các ca 1, 2, 3, 4
+            count = np.sum(X[:, d] == shift)
+            while count < A:
+                available = [i for i in range(1, N + 1) if X[i][d] == 0 and dayoff[i][d] == 0 and (d == 1 or X[i][d - 1] != 4)]
+                if not available:
+                    break
+                i = random.choice(available)
+                X[i][d] = shift
+                if shift == 4 and d < D:
+                    X[i][d + 1] = 0  # Nghỉ sau ca đêm
+                count += 1
+            while count > B:
+                assigned = [i for i in range(1, N + 1) if X[i][d] == shift]
+                if not assigned:
+                    break
+                i = random.choice(assigned)
+                X[i][d] = 0
+                count -= 1
+    return X
+
+class AntColony:
+    def __init__(self,  num_ants=15, max_iterations=30, alpha=1, beta=2, rho=0.1, Q=1):
+        
+        self.num_ants = num_ants
+        self.max_iterations = max_iterations
+        self.alpha = alpha # Trọng số pheromone
+        self.beta = beta # Trọng số heuristic
+        self.rho = rho # Hệ số bay hơi pheromone
+        self.Q = Q # Hệ số pheromone
+        
+
+    def initialize_pheromone(self):
+        pheromone = {}
+        for i in range(1, self.N + 1):
+            for d in range(1, self.D + 1):
+                for s in range(5):  # 0: nghỉ, 1-4: các ca
+                    pheromone[(i, d, s)] = 0.1
+        return pheromone
+
+    def heuristic(self, i, d, s, X):
+        # Giá trị heuristic
+        if self.dayoff[i][d] == 1 and s != 0:
+            return 0
+        if d > 1 and X[i][d - 1] == 4 and s != 0:
+            return 0
+        if s == 4:
+            return 0.1  # Ưu tiên ít ca đêm
+        return 1
+
+    def construct_solution(self):
+        X = np.zeros((self.N + 1, self.D + 1))
+        for i in range(1, self.N + 1):
+            for d in range(1, self.D + 1):
+                if self.dayoff[i][d] == 1:
+                    X[i][d] = 0
+                    continue
+                allowed_shifts = [0] if (d > 1 and X[i][d - 1] == 4) else range(5)
+                probs = []
+                for s in allowed_shifts:
+                    tau = self.pheromone[(i, d, s)]
+                    eta = self.heuristic(i, d, s, X)
+                    prob = (tau ** self.alpha) * (eta ** self.beta)
+                    probs.append(prob)
+                probs = np.array(probs) / np.sum(probs)
+                s = np.random.choice(allowed_shifts, p=probs)
+                X[i][d] = s
+        X = adjust_schedule(X, self.N, self.D, self.A, self.B, self.dayoff)
+        return X
+
+    def evaluate_fitness(self, X):
+        # Tối thiểu hóa số ca đêm tối đa của một nhân viên
+        max_night = 0
+        for i in range(1, self.N + 1):
+            night_count = np.sum(X[i] == 4)
+            max_night = max(max_night, night_count)
+        return -max_night
+
+    def update_pheromone(self, solutions, fitness_scores):
+        # Bay hơi pheromone
+        for key in self.pheromone:
+            self.pheromone[key] *= (1 - self.rho)
+        # Cộng thêm pheromone từ các lời giải
+        for k in range(self.num_ants):
+            X = solutions[k]
+            fitness = fitness_scores[k]
+            cost = -fitness  # Chuyển fitness thành cost
+            delta_tau = self.Q / (cost + 1e-10)  # Tránh chia cho 0
+            for i in range(1, self.N + 1):
+                for d in range(1, self.D + 1):
+                    s = int(X[i][d])
+                    self.pheromone[(i, d, s)] += delta_tau
+
+    def solve(self, N, D, A, B, dayoff):
+        start = time.time()
+        self.N = N  # Số nhân viên
+        self.D = D  # Số ngày
+        self.A = A  # Số nhân viên tối thiểu mỗi ca
+        self.B = B  # Số nhân viên tối đa mỗi ca
+        self.dayoff = dayoff  # Ma trận ngày nghỉ
+        self.pheromone = self.initialize_pheromone()
+        best_solution = None
+        best_fitness = float('-inf')
+        for iteration in range(self.max_iterations):
+            print(f"Iteration {iteration + 1}/{self.max_iterations}")
+            if iteration > 0:
+                # In gia tri toi uu hien tai
+                print(f"Best fitness: {best_fitness}")
+            solutions = []
+            fitness_scores = []
+            for _ in range(self.num_ants):
+                X = self.construct_solution()
+                fitness = self.evaluate_fitness(X)
+                solutions.append(X)
+                fitness_scores.append(fitness)
+                if fitness > best_fitness:
+                    best_solution = X
+                    best_fitness = fitness
+            self.update_pheromone(solutions, fitness_scores)
+        def check(X, N, D, A, B, dayoff):
+            for i in range(1, N + 1):
+                for d in range(1, D + 1):
+                    if dayoff[i][d] == 1 and X[i][d] != 0:
+                        return False
+            for d in range(1, D + 1):
+                for shift in range(1, 5):
+                    count = np.sum(X[:, d] == shift)
+                    if count < A or count > B:
+                        return False
+            for i in range(1, N + 1):
+                for d in range(1, D):
+                    if X[i][d] == 4 and X[i][d + 1] != 0:
+                        return False
+            return True
+        if check(best_solution, self.N, self.D, self.A, self.B, self.dayoff):
+            print("Best solution found:")
+            print(f"Số ca đêm tối đa của một nhân viên: {-best_fitness}")
+            print("Thơig gian thực hiện:", time.time() - start)
+            return best_solution
+        else:
+            print("No valid solution found.")
+        
+
+
+    
+```
+
+### NguyenChiCuong/LP.py
+```py
+import numpy as np
+from ortools.linear_solver import pywraplp
+import time
+
+class Linear:
+    def __init__(self):
+        pass
+
+    def solve(self, N, D, A, B, dayoff):
+        solver = pywraplp.Solver.CreateSolver('SCIP')
+
+        #tao bien rang buoc
+        x = {}
+        for i in range(1, N+1):
+            for j in range(1, D+1):
+                for k in range(0, 5):
+                    x[i, j, k] = solver.IntVar(0, 1, f'x[{i},{j},{k}]')
+
+        #rang buoc: moi nhan vien moi ngay lam nhieu nhat 1 ca: 
+        for i in range(1, N+1):
+            for j in range(1, D+1):
+                solver.Add(sum(x[i, j, k] for k in range(1, 5)) <= 1)
+
+        #rang buoc neu ngay hom truoc lam ca dem ( ca 4) thi ngay hom sau phai nghi
+        for i in range(1, N+1):
+            for j in range(1, D):
+                solver.Add(x[i, j, 4] + sum(x[i, j+1, k] for k in range(1, 5)) <= 1)
+
+        #moi ca trong ngay co it nhat A nhan vien va nhieu nhat B nhan vien
+        for j in range(1, D+1): # cac ngay
+            for k in range(1, 5): #cac ca
+                solver.Add(sum(x[i, j, k] for i in range(1, N+1)) >= A)
+                solver.Add(sum(x[i, j, k] for i in range(1, N+1)) <= B)
+
+        #rang buoc ngay nghi cho nhan vien
+        for i in range(1, N+1):
+            for j in range(1, D+1):
+                if dayoff[i][j] == 1:
+                    solver.Add(sum(x[i, j, k] for k in range(1, 5)) <= 0)
+
+        #check thu cach  moi
+
+
+        #bien muc tieu
+        goal = solver.IntVar(0, D, 'goal')
+        for i in range(1, N+1):
+            solver.Add(goal >= sum(x[i, j, 4] for j in range(1, D+1)))
+        start = time.time()
+        solver.Minimize(goal)
+        status = solver.Solve()
+
+        if status == pywraplp.Solver.OPTIMAL:
+            # print(f'Test case {tc}', end=' ')
+            print("Optimal solution found.", end=' ')
+            print("Objective value:", int(solver.Objective().Value()))
+            endtime = time.time()
+            print("Execution time: {:.2f} seconds".format(endtime - start))
+            best_solution = np.zeros((N+1, D+1))
+            for i in range(1, N+1):
+                for j in range(1, D+1):
+                    for k in range(0, 5):
+                        if x[i, j, k].solution_value() == 1:
+                            best_solution[i][j] = k
+            return best_solution
+        else:
+            print("The problem does not have an optimal solution.")
+            return None
+
+
+```
+
+### NguyenChiCuong/HC.py
+```py
+import numpy as np
+import random
+import time
+
+class HC_C:
+    def __init__(self):
+        pass
+
+    def initialize_random_solution(self, N, D, dayoff, A, B):
+        X = np.zeros((N+1, D+1))
+        for i in range(1, N+1):
+            for j in range(1, D+1):
+                if dayoff[i][j] == 1:
+                    X[i][j] = 0
+        for i in range(1, N+1):
+            for j in range(1, D+1):
+                if dayoff[i][j]:
+                    continue
+                if j> 1 and X[i][j - 1] == 4:
+                    X[i][j] = 0
+                else: 
+                    X[i][j] = np.random.randint(0, 4)
+        for d in range(1, D+1):
+            for shift in range(1, 5):
+                count = np.sum(X[:, d] == shift)
+                while count < A: 
+                    available = [i for i in range(1, N+1) if X[i][d] == 0 and dayoff[i][d] == 0 and X[i][d-1] != 4]
+                    if not available:
+                        break
+                    i = np.random.choice(available)
+                    X[i][d] = shift
+                    count += 1
+                while count > B:
+                    assigned = np.where(X[:, d] == shift)[0]
+                    if not assigned.size:
+                        break
+                    i = np.random.choice(assigned)
+                    X[i][d] = 0
+                    count -= 1
+        return X
+    
+    def evaluate_fitness(self, X, N, D, A, B, dayoff):
+        penalty = 0
+        # check vi pham ngay nghi
+        for i in range(1, N + 1):
+            for d in range(1, D +1):
+                if dayoff[i][d] and X[i][d] != 0:
+                    penalty -= 1000
+
+        # check vi pham so luong nguoi lam
+        for d in range(1, D +1):
+            for shift in range(1, 5):
+                count = np.sum(X[:, d] == shift)
+                if count < A:
+                    penalty -= 100 * (A - count)
+                elif count > B:
+                    penalty -= 100 * (count - B)
+
+        # check vi pham ca dem 
+        for i in range(1, N + 1):
+            for d in range(1, D):
+                if X[i][d] == 4 and X[i][d + 1] != 0:
+                    penalty -= 1000
+
+        max_night_shift = 0
+        for i in range(1, N + 1):
+            count = np.sum(X[i] == 4)
+            if count > max_night_shift:
+                max_night_shift = count
+        return -max_night_shift + penalty
+    
+    def get_neighbor(self, X, N, D, A, B, dayoff):
+        X_new = np.copy(X)
+        i = np.random.randint(1, N + 1)
+        d = np.random.randint(1, D + 1)
+
+        if dayoff[i][d] == 1: 
+            return X_new
+        if d > 1 and X[i][d - 1] == 4:
+            return X_new
+        else: 
+            new_shift = np.random.randint(0, 5)
+            while new_shift == X[i][d]:
+                new_shift = np.random.randint(0, 5)
+            X_new[i][d] = new_shift
+            if new_shift == 4 and d< D:
+                X_new[i][d + 1] = 0
+                X_new[i][d+1] = 0
+        
+        #check vi pham ngay nghi
+        for i in range(1, N + 1):
+            for d in range(1, D + 1):
+                if dayoff[i][d] == 1:
+                    X_new[i][d] = 0
+
+        #check vi pham ca dem
+        for i in range(1, N + 1):
+            for d in range(1, D):
+                if X_new[i][d] == 4 and X_new[i][d + 1] != 0:
+                    X_new[i][d+1] = 0
+
+
+        # toi thieu hoa so nguoi lam moi ca
+        for i in range(1, D + 1):
+            for shift in range(1, 5):
+                count = np.sum(X_new[:, i] == shift)
+                while A < count < B:
+                    assigned = np.where(X_new[:, i] == shift)[0]
+                    if not assigned.size:
+                        break
+                    j = np.random.choice(assigned)
+                    X_new[j][i] = 0
+                    count -= 1
+        #check vi pham so nguoi lam
+        for d in range(1, D + 1):
+            for shift in range(1, 5):
+                count = np.sum(X_new[:, d] == shift)
+                while count < A: 
+                    available = [i for i in range(1, N + 1) if X_new[i][d] == 0 and dayoff[i][d] == 0 and X_new[i][d-1] != 4]
+                    if not available:
+                        break
+                    i = np.random.choice(available)
+                    X_new[i][d] = shift
+                    count += 1
+                while count > B:
+                    assigned = np.where(X_new[:, d] == shift)[0]
+                    if not assigned.size:
+                        break
+                    i = np.random.choice(assigned)
+                    X_new[i][d] = 0
+                    count -= 1
+        for i in range(1, N + 1):
+            for d in range(1, D):
+                if dayoff[i][d] == 4 and X_new[i][d + 1] != 0:
+                    X_new[i][d +1] = 0 
+        return X_new
+    
+    def solve(self, N, D, A, B, dayoff, max_iter = 1000):
+        X = self.initialize_random_solution(N, D, dayoff, A, B)
+        best_fitness = self.evaluate_fitness(X, N, D, A, B, dayoff)
+        best_X = np.copy(X)
+
+        for iteration in range(max_iter):
+            X_new = self.get_neighbor(X, N, D, A, B, dayoff)
+            new_fitness = self.evaluate_fitness(X_new, N, D, A, B, dayoff)
+
+            if new_fitness > best_fitness:
+                best_fitness = new_fitness
+                best_X = np.copy(X_new)
+                X = np.copy(X_new)
+        def check(X, N, D, A, B, dayoff):
+            for i in range(1, N + 1):
+                for d in range(1, D + 1):
+                    if dayoff[i][d] == 1 and X[i][d] != 0:
+                        return False
+            for d in range(1, D + 1):
+                for shift in range(1, 5):
+                    count = np.sum(X[:, d] == shift)
+                    if count < A or count > B:
+                        return False
+            for i in range(1, N + 1):
+                for d in range(1, D):
+                    if X[i][d] == 4 and X[i][d + 1] != 0:
+                        return False
+            return True
+        if check(best_X, N, D, A, B, dayoff):
+            print("Solution found.")
+            print("Best fitness:", best_fitness)
+            return best_X
+        else:
+            print("No solution found.")
+            return None
+        
+    
+
+```
+
+### NguyenChiCuong/GA.py
+```py
+import numpy as np
+import time
+
+class GA_C:
+    def __init__(self):
+        pass
+
+    def initialize_random_solution(N, D, dayoff, A, B):
+        X = np.zeros((N+1, D+1))
+        for i in range(1, N+1):
+            for j in range(1, D+1):
+                if dayoff[i][j] == 1:
+                    X[i][j] = 0
+        for i in range(1, N+1):
+            for j in range(1, D+1):
+                if dayoff[i][j]:
+                    continue
+                if j> 1 and X[i][j - 1] == 4:
+                    X[i][j] = 0
+                else: 
+                    X[i][j] = np.random.randint(0, 4)
+        for d in range(1, D+1):
+            for shift in range(1, 5):
+                count = np.sum(X[:, d] == shift)
+                while count < A: 
+                    available = [i for i in range(1, N+1) if X[i][d] == 0 and dayoff[i][d] == 0 and X[i][d-1] != 4]
+                    if not available:
+                        break
+                    i = np.random.choice(available)
+                    X[i][d] = shift
+                    count += 1
+                while count > B:
+                    assigned = np.where(X[:, d] == shift)[0]
+                    if not assigned.size:
+                        break
+                    i = np.random.choice(assigned)
+                    X[i][d] = 0
+                    count -= 1
+        return X
+    
+    def evaluate_fitness(X, N, D, A, B, dayoff):
+        penalty = 0
+        # check vi pham ngay nghi
+        for i in range(1, N + 1):
+            for d in range(1, D +1):
+                if dayoff[i][d] and X[i][d] != 0:
+                    penalty -= 1000
+
+        # check vi pham so luong nguoi lam
+        for d in range(1, D +1):
+            for shift in range(1, 5):
+                count = np.sum(X[:, d] == shift)
+                if count < A:
+                    penalty -= 100 * (A - count)
+                elif count > B:
+                    penalty -= 100 * (count - B)
+
+        # check vi pham ca dem 
+        for i in range(1, N + 1):
+            for d in range(1, D):
+                if X[i][d] == 4 and X[i][d + 1] != 0:
+                    penalty -= 1000
+
+        max_night_shift = 0
+        for i in range(1, N + 1):
+            count = np.sum(X[i] == 4)
+            if count > max_night_shift:
+                max_night_shift = count
+        return -max_night_shift + penalty
+    
+    def tournament_selection(population, fitness_scores, tournament_size=3):
+        selected_indices = np.random.choice(len(population), tournament_size, replace=False)
+        best_index = selected_indices[np.argmax(fitness_scores[selected_indices])]
+        return population[best_index]
+    
+    def crossover(parent1, parent2, crossover_rate=0.6):
+        child1 = np.copy(parent1)
+        child2 = np.copy(parent2)
+        for i in range(1, len(parent1)):
+            if np.random.rand() > crossover_rate:
+                child1[i] = parent2[i]
+                child2[i] = parent1[i]
+        return child1, child2
+    
+    def mutate(X, N, D, dayoff, A, B, mutation_rate=0.1):
+        X = np.copy(X)  # Tạo bản sao
+        # Bước đột biến
+        for i in range(1, N + 1):
+            for d in range(1, D + 1):
+                if np.random.rand() < mutation_rate:
+                    if dayoff[i][d] == 1:
+                        X[i][d] = 0
+                        continue
+                    if d > 1 and X[i][d - 1] == 4:
+                        X[i][d] = 0
+                    else:
+                        X[i][d] = np.random.randint(0, 5)  # Sửa: Bao gồm ca 4
+                        if X[i][d] == 4 and d < D:
+                            X[i][d + 1] = 0
+        # Bước sửa lỗi ca đêm
+        for i in range(1, N + 1):
+            for d in range(1, D):
+                if X[i][d] == 4 and X[i][d + 1] != 0:
+                    X[i][d + 1] = 0
+        # Bước điều chỉnh A <= số nhân viên mỗi ca <= B
+        for d in range(1, D + 1):
+            for shift in range(1, 5):
+                count = np.sum(X[:, d] == shift)
+                while count < A:
+                    available = [i for i in range(1, N + 1) if X[i][d] == 0 and dayoff[i][d] == 0 and (d == 1 or X[i][d - 1] != 4)]
+                    if not available:
+                        break
+                    i = np.random.choice(available)
+                    X[i][d] = shift
+                    if shift == 4 and d < D:  # Thêm: Nếu gán ca đêm, ngày tiếp theo phải nghỉ
+                        X[i][d + 1] = 0
+                    count += 1
+                while count > B:
+                    assigned = np.where(X[:, d] == shift)[0]
+                    if not assigned.size:
+                        break
+                    i = np.random.choice(assigned)
+                    X[i][d] = 0
+                    count -= 1
+        # Bước sửa lỗi ca đêm lần cuối
+        for i in range(1, N + 1):
+            for d in range(1, D):
+                if X[i][d] == 4 and X[i][d + 1] != 0:
+                    X[i][d + 1] = 0
+        return X
+
+    def solve(self, N, D, A, B, dayoff):
+        starttime = time.time()
+        population_size = 50
+        generations = 20
+        mutation_rate = 0.1
+        population = [self.initialize_random_solution(N, D, dayoff, A, B) for _ in range(population_size)]
+
+        for generation in range(generations):
+            fitness_scores = np.array([self.evaluate_fitness(individual, N, D, A, B, dayoff) for individual in population])
+            best_index = np.argmax(fitness_scores)
+            best_solution = population[best_index]
+            new_population = [best_solution]
+            
+            while len(new_population) < population_size:
+                parent1 = self.tournament_selection(population, fitness_scores)
+                parent2 = self.tournament_selection(population, fitness_scores)
+                child1, child2 = self.crossover(parent1, parent2)
+                new_population.append(self.mutate(child1, N, D, dayoff, A, B, mutation_rate))
+                new_population.append(self.mutate(child2, N, D, dayoff, A, B, mutation_rate))
+
+            population = new_population[:population_size]
+
+            if generation % 10 == 0:
+                best_fitness = max(fitness_scores)
+                print(f"Generation {generation}: Best Fitness = {best_fitness}")
+        best_index = np.argmax(fitness_scores)
+        best_solution = population[best_index]
+
+        # Kiểm tra tính hợp lệ của giải pháp tốt nhất
+        def check(X, N, D, A, B, dayoff):
+            for i in range(1, N + 1):
+                for d in range(1, D + 1):
+                    if dayoff[i][d] == 1 and X[i][d] != 0:
+                        return False
+            for d in range(1, D + 1):
+                for shift in range(1, 5):
+                    count = np.sum(X[:, d] == shift)
+                    if count < A or count > B:
+                        return False
+            for i in range(1, N + 1):
+                for d in range(1, D):
+                    if X[i][d] == 4 and X[i][d + 1] != 0:
+                        return False
+            return True
+        if not check(best_solution, N, D, A, B, dayoff):
+            print("No valid solution found.")
+            return None
+        print("Best solution found.")
+        print("Best fitness:", self.evaluate_fitness(best_solution, N, D, A, B, dayoff))
+        print("Best solution schedule:")
+        for i in range(1, N + 1):
+            print(f"Staff {i}: ", end='')
+            for d in range(1, D + 1):
+                print(int(best_solution[i][d]), end=' ')
+            print()
+        endtime = time.time()
+        print("Execution time: {:.2f} seconds".format(endtime - starttime))
+        return best_solution
+```
+
+### NguyenChiCuong/SA.py
+```py
+import numpy as np
+import time
+import math
+import random
+
+def adjust_schedule(X, N, D, A, B, dayoff):
+    # Điều chỉnh lịch để mỗi ca có từ A đến B nhân viên
+    for d in range(1, D + 1):
+        for shift in range(1, 5):  # Các ca 1, 2, 3, 4
+            count = np.sum(X[:, d] == shift)
+            while count < A:
+                available = [i for i in range(1, N + 1) if X[i][d] == 0 and dayoff[i][d] == 0 and (d == 1 or X[i][d - 1] != 4)]
+                if not available:
+                    break
+                i = random.choice(available)
+                X[i][d] = shift
+                if shift == 4 and d < D:
+                    X[i][d + 1] = 0  # Nghỉ sau ca đêm
+                count += 1
+            while count > A:
+                assigned = [i for i in range(1, N + 1) if X[i][d] == shift]
+                if not assigned:
+                    break
+                i = random.choice(assigned)
+                X[i][d] = 0
+                count -= 1
+    # Sửa lỗi ca đêm (ngày sau ca đêm phải nghỉ)
+    for i in range(1, N + 1):
+        for d in range(1, D):
+            if X[i][d] == 4 and X[i][d + 1] != 0:
+                X[i][d + 1] = 0
+
+    # Đảm bảo các ca không bị thiếu
+    for d in range(1, D + 1):
+        for shift in range(1, 5):  # Các ca 1, 2, 3, 4
+            count = np.sum(X[:, d] == shift)
+            while count < A:
+                available = [i for i in range(1, N + 1) if X[i][d] == 0 and dayoff[i][d] == 0 and (d == 1 or X[i][d - 1] != 4)]
+                if not available:
+                    break
+                i = random.choice(available)
+                X[i][d] = shift
+                if shift == 4 and d < D:
+                    X[i][d + 1] = 0  # Nghỉ sau ca đêm
+                count += 1
+            while count > B:
+                assigned = [i for i in range(1, N + 1) if X[i][d] == shift]
+                if not assigned:
+                    break
+                i = random.choice(assigned)
+                X[i][d] = 0
+                count -= 1
+    return X
+
+class SimulatedAnnealingScheduler:
+    def __init__(self, T0=5000, alpha=0.99, max_iterations=500, iterations_per_temp=50):
+        
+        self.T0 = T0
+        self.alpha = alpha
+        self.max_iterations = max_iterations
+        self.iterations_per_temp = iterations_per_temp
+        self.best_solutions = []
+        self.k = 5
+        self.stagnation_counter = 0  # Đếm số lần không cải thiện
+        self.stagnation_limit = 50  # Giới hạn trước khi khởi động lại
+
+    def initialize_solution(self):
+        """Khởi tạo giải pháp ban đầu"""
+        X = np.zeros((self.N + 1, self.D + 1), dtype=int)
+        for i in range(1, self.N + 1):
+            for d in range(1, self.D + 1):
+                if self.dayoff[i][d] == 1:
+                    X[i][d] = 0
+
+        for d in range(1, self.D + 1):
+            for s in range(1, 5):
+                available = [i for i in range(1, self.N + 1) if X[i][d] == 0 and self.dayoff[i][d] == 0 and (d == 1 or X[i][d-1] != 4)]
+                np.random.shuffle(available)
+                count = np.sum(X[:, d] == s)
+                for i in available:
+                    if count >= self.A:
+                        break
+                    X[i][d] = s
+                    count += 1
+        return X
+
+    def evaluate_solution(self, X):
+        """Đánh giá giải pháp"""
+        penalty = 0
+        for i in range(1, self.N + 1):
+            for d in range(1, self.D + 1):
+                if self.dayoff[i][d] == 1 and X[i][d] != 0:
+                    penalty += 1000
+        for d in range(1, self.D + 1):
+            for s in range(1, 5):
+                count = np.sum(X[:, d] == s)
+                if count < self.A or count > self.B:
+                    penalty += 1000
+        for i in range(1, self.N + 1):
+            for d in range(1, self.D):
+                if X[i][d] == 4 and X[i][d+1] != 0:
+                    penalty += 1000
+        
+        max_night_shifts = max(np.sum(X[i, 1:self.D + 1] == 4) for i in range(1, self.N + 1))
+        return max_night_shifts + penalty
+
+    def get_neighbor(self, X, aggressive=False):
+        """Tạo giải pháp lân cận, có thể thay đổi nhiều ca nếu aggressive=True"""
+        X_new = X.copy()
+        if aggressive or np.random.random() < 0.3:  # Thay đổi lớn hơn nếu không cải thiện lâu
+            # Hoán đổi ca của nhiều nhân viên trong một ngày
+            d = np.random.randint(1, self.D + 1)
+            num_swaps = np.random.randint(2, 4)  # Hoán đổi 2-4
+            for _ in range(num_swaps):
+                i1, i2 = np.random.choice(range(1, self.N + 1), 2, replace=False)
+                if self.dayoff[i1][d] == 1 or self.dayoff[i2][d] == 1:
+                    continue
+                if d > 1 and (X_new[i1][d-1] == 4 or X_new[i2][d-1] == 4):
+                    continue
+                X_new[i1][d], X_new[i2][d] = X_new[i2][d], X_new[i1][d]
+
+        else:
+            # Thay đổi ca của một nhân viên, ưu tiên nhân viên có nhiều ca đêm
+            night_shifts = [np.sum(X[i, 1:self.D + 1] == 4) for i in range(1, self.N + 1)]
+            i = np.argmax(night_shifts) + 1  # Chọn nhân viên có nhiều ca đêm nhất
+            d = np.random.randint(1, self.D + 1)
+            if self.dayoff[i][d] == 1:
+                return X_new
+
+            new_shift = np.random.randint(0, 5)
+            if d > 1 and X_new[i][d-1] == 4:
+                new_shift = 0
+            X_new[i][d] = new_shift
+            if X_new[i][d] == 4 and d < self.D and self.dayoff[i][d+1] != 1:
+                X_new[i][d+1] = 0
+
+        #Điều chỉnh để thỏa mãn ràng buộc A, B
+        for d in range(1, self.D + 1):
+            for s in range(1, 5):
+                count = np.sum(X_new[:, d] == s)
+                while count < self.A:
+                    avaiable = [i for i in range(1, self.N + 1) if X_new[i][d] == 0 and self.dayoff[i][d] == 0 and (d == 1 or X[i][d - 1] != 4)]
+                    if avaiable:
+                        i = np.random.choice(avaiable)
+                        X_new[i][d] = s
+                        count += 1
+                    else:
+                        break
+                while count > self.B:
+                    avaiable = [i for i in range(1, self.N + 1) if X_new[i][d] == s]
+                    if avaiable:
+                        i = np.random.choice(avaiable)
+                        X_new[i][d] = 0
+                        count -= 1
+                    else:
+                        break
+        return X_new
+
+    def solve(self, N, D, A, B, dayoff):
+        """Chạy thuật toán SA"""
+        self.N = N
+        self.D = D
+        self.A = A
+        self.B = B
+        self.dayoff = dayoff
+        X = self.initialize_solution()
+        cost = self.evaluate_solution(X)
+        best_X = X.copy()
+        best_cost = cost
+        T = self.T0
+
+        for iteration in range(self.max_iterations):
+            print(f"Iteration: {iteration} / {self.max_iterations}   and best_cost = {best_cost}")
+            for _ in range(self.iterations_per_temp):
+                # Tạo giải pháp lân cận, thay đổi mạnh nếu không cải thiện lâu
+                aggressive = self.stagnation_counter > self.stagnation_limit
+                X_new = self.get_neighbor(X, aggressive=aggressive)
+                new_cost = self.evaluate_solution(X_new)
+                delta_E = new_cost - cost
+
+                if delta_E <= 0 or np.random.random() < math.exp(-delta_E / T):
+                    X = X_new
+                    cost = new_cost
+                    self.stagnation_counter = 0  # Reset nếu có thay đổi
+                else:
+                    self.stagnation_counter += 1
+
+                if cost < best_cost:
+                    best_cost = cost
+                    best_X = X.copy()
+                    self.best_solutions.append((best_X.copy(), best_cost))
+                    self.best_solutions = sorted(self.best_solutions, key=lambda x: x[1])[:self.k]
+
+            T *= self.alpha
+            if T < 0.01:
+                break
+
+        return best_X, best_cost
+
+
+```
+
+### NgoTriCanh/HC-SA.py
+```py
+import random
+import time
+import math
+import copy
+import os
+from typing import List, Tuple, Optional, Any, Callable
+
+class LocalSearchSolver:
+    def __init__(self,
+                num_restarts=5,
+                max_iterations_per_restart=200,
+                max_no_improvement_per_restart=50,
+                num_neighbors_to_explore_per_step=10,  # Changed default to 10 for hybrid approach
+                initial_temperature=100.0,
+                cooling_rate=0.99,
+                min_temperature=0.1,
+                initial_swap_percentage_k=10.0,  # k% of N for initial number of swaps
+                max_swaps_per_op_cap=5,  # Absolute cap on number of swaps in one _swap_neighbor call
+                verbose=True  # Control detailed console output
+                ):
+        
+        # Algorithm parameters
+        self.num_restarts = num_restarts
+        self.max_iterations_per_restart = max_iterations_per_restart
+        self.max_no_improvement_per_restart = max_no_improvement_per_restart
+        self.num_neighbors_to_explore_per_step = num_neighbors_to_explore_per_step
+        
+        # SA parameters
+        self.initial_temperature = initial_temperature
+        self.cooling_rate = cooling_rate
+        self.min_temperature = min_temperature
+
+        # Parameters for k-opt neighbor generation
+        self.initial_swap_percentage_k = initial_swap_percentage_k
+        self.max_swaps_per_op_cap = max_swaps_per_op_cap
+        
+        # Output control
+        self.verbose = verbose
+        
+        # Problem parameters (will be set in solve())
+        self.N = None  # Number of staff
+        self.D = None  # Number of days
+        self.A = None  # Minimum staff per shift
+        self.B = None  # Maximum staff per shift
+        self.IS_PRE_ASSIGNED_OFF = None  # (N, D) - boolean
+        self.max_swaps_at_start_calculated = 1  # Default value, will be recalculated in solve()
+
+    def _create_initial_solution(self):
+        # individual[staff_idx][day_idx]
+        individual = [[-1 for _ in range(self.D)] for _ in range(self.N)]
+
+        # Assign fixed off days first
+        for d in range(self.D):
+            for i in range(self.N):
+                if self.IS_PRE_ASSIGNED_OFF[i][d]:
+                    individual[i][d] = 0
+
+        # Schedule for each day
+        for d in range(self.D):
+            # If worked night shift yesterday -> off today (if not already assigned)
+            if d > 0:
+                for i in range(self.N):
+                    if individual[i][d - 1] == 4:  # Night shift yesterday
+                        if individual[i][d] == -1:  # Not already assigned
+                            individual[i][d] = 0
+        
+            # Get staff who haven't been assigned yet for day d
+            available_staff_for_assignment = [i for i in range(self.N) if individual[i][d] == -1]
+            random.shuffle(available_staff_for_assignment)
+
+            # Assign Night shift (4)
+            # Prioritize those not affected by IS_PRE_ASSIGNED_OFF[i][d] (already handled)
+            # and not needing rest after night shift (already handled)
+            night_shift_candidates = available_staff_for_assignment.copy()
+            num_to_assign_night = min(self.A, len(night_shift_candidates))
+            assigned_night_count = 0
+            
+            temp_available_after_night = night_shift_candidates.copy()
+            random.shuffle(night_shift_candidates)
+
+            for staff_idx in night_shift_candidates:
+                if assigned_night_count < num_to_assign_night:
+                    individual[staff_idx][d] = 4
+                    assigned_night_count += 1
+                    temp_available_after_night.remove(staff_idx)
+                else:
+                    break
+            
+            available_staff_for_day_shifts = temp_available_after_night
+
+            # Assign Day shifts (1, 2, 3)
+            day_shifts_types = [1, 2, 3]
+            random.shuffle(day_shifts_types)
+
+            for shift_type in day_shifts_types:
+                num_to_assign_day_shift = min(self.A, len(available_staff_for_day_shifts))
+                assigned_day_shift_count = 0
+                temp_available_after_this_shift = available_staff_for_day_shifts.copy()
+                
+                random.shuffle(available_staff_for_day_shifts)
+
+                for staff_idx in available_staff_for_day_shifts:
+                    if assigned_day_shift_count < num_to_assign_day_shift:
+                        individual[staff_idx][d] = shift_type
+                        assigned_day_shift_count += 1
+                        temp_available_after_this_shift.remove(staff_idx)
+                    else:
+                        break
+                available_staff_for_day_shifts = temp_available_after_this_shift
+            
+            # Assign remaining unassigned staff (-1) to off (0)
+            for staff_idx in range(self.N):
+                if individual[staff_idx][d] == -1:
+                    individual[staff_idx][d] = 0
+        
+        for n in range(self.N):
+            for d in range(self.D):
+                if individual[n][d] == -1:
+                    if self.verbose:
+                        print(f"CRITICAL ERROR in _create_initial_solution: Cell not assigned [{n}][{d}]! Setting default to 0.")
+                    individual[n][d] = 0
+        return individual
+    
+    def _calculate_fitness(self, individual):
+        # Check fixed off day violations
+        violation_fixed_off = 0
+        for n in range(self.N):
+            for d in range(self.D):
+                if individual[n][d] > 0 and self.IS_PRE_ASSIGNED_OFF[n][d]:
+                    violation_fixed_off += 1
+
+        # Check coverage violations
+        violation_coverage = 0
+        shifts_coverage = [[0 for _ in range(5)] for _ in range(self.D)]
+        for d in range(self.D):
+            for n in range(self.N):
+                shift_val = individual[n][d]
+                if 0 <= shift_val <= 4:
+                    shifts_coverage[d][shift_val] += 1
+
+        min_shortage_total = 0
+        max_excess_total = 0
+        for d in range(self.D):
+            for shift_type in range(1, 5): 
+                actual_coverage = shifts_coverage[d][shift_type]
+                min_shortage_total += max(0, self.A - actual_coverage)
+                max_excess_total += max(0, actual_coverage - self.B)
+        violation_coverage = min_shortage_total + max_excess_total
+
+        # Check night shift followed by work violations
+        violation_night_then_off = 0
+        if self.D > 1:
+            for n in range(self.N):
+                for d in range(self.D - 1):
+                    if individual[n][d] == 4 and individual[n][d+1] != 0:
+                        violation_night_then_off += 1
+
+        # Calculate max night shifts per staff (objective)
+        night_shifts_per_staff = [0] * self.N
+        for n in range(self.N):
+            for d in range(self.D): 
+                if individual[n][d] == 4:
+                    night_shifts_per_staff[n] += 1
+        
+        max_night_shifts_objective = 0.0
+        if self.N > 0 and night_shifts_per_staff: 
+            max_night_shifts_objective = float(max(night_shifts_per_staff)) if night_shifts_per_staff else 0.0
+
+        # Weights for different violations
+        w_fixed_off = 1000.0
+        w_coverage = 1000.0
+        w_night_off = 1000.0
+        w_max_nights = 1.0 
+
+        total_violation_penalty = (
+            w_fixed_off * violation_fixed_off +
+            w_coverage * violation_coverage +
+            w_night_off * violation_night_then_off
+        )
+        
+        fitness_score = -(total_violation_penalty + w_max_nights * max_night_shifts_objective)
+        return fitness_score    
+    
+    def _swap_night_with_off_neighbor(self, current_solution, num_swaps_to_perform=1):
+        neighbor = copy.deepcopy(current_solution)
+        if self.N < 1 or self.D == 0:
+            return neighbor
+
+        swaps_actually_done = 0
+        for _ in range(num_swaps_to_perform):
+            max_attempts_one_swap = 10 
+            for _ in range(max_attempts_one_swap):
+                if self.N < 2 and num_swaps_to_perform > 0:  # Need at least 2 staff to swap
+                    return neighbor
+
+                day_idx = random.randint(0, self.D - 1)
+
+                staff_on_night_shift_today = [
+                    n for n in range(self.N) if neighbor[n][day_idx] == 4
+                ]
+                staff_on_off_duty_today_can_work_night = [
+                    n for n in range(self.N) 
+                    if neighbor[n][day_idx] == 0 and not self.IS_PRE_ASSIGNED_OFF[n][day_idx]
+                ]
+
+                if not staff_on_night_shift_today or not staff_on_off_duty_today_can_work_night:
+                    continue 
+
+                n1_idx = random.choice(staff_on_night_shift_today) 
+                
+                # Find a different staff than n1 to swap with
+                possible_n2_candidates = [n2 for n2 in staff_on_off_duty_today_can_work_night if n2 != n1_idx]
+                if not possible_n2_candidates:
+                    continue  # No n2 different from n1 found
+                
+                n2_idx = random.choice(possible_n2_candidates)
+                
+                neighbor[n1_idx][day_idx] = 0 
+                neighbor[n2_idx][day_idx] = 4 
+                swaps_actually_done += 1
+                break  # Break after successful swap
+        
+        return neighbor
+    
+    def _fix_night_shift_violation_neighbor(self, current_solution):
+        neighbor = copy.deepcopy(current_solution)
+        if self.D <= 1:
+            return neighbor
+        
+        violation_positions = []
+        for n in range(self.N):
+            for d_loop in range(self.D - 1):
+                if neighbor[n][d_loop] == 4 and neighbor[n][d_loop+1] != 0:
+                    violation_positions.append((n, d_loop))
+        
+        if not violation_positions:
+            return neighbor
+        
+        n_violating, d_violating_night = random.choice(violation_positions)
+        d_violating_work = d_violating_night + 1
+        
+        neighbor[n_violating][d_violating_work] = 0  # Force off
+        return neighbor
+    
+    def _generate_neighbor(self, current_solution, num_swaps_for_swap_op=1):
+        operators = [
+            (self._swap_night_with_off_neighbor, 0.70),  # Pass num_swaps_for_swap_op here     
+            (self._fix_night_shift_violation_neighbor, 0.30),      
+        ]
+        rand_val = random.random()
+        cumulative_prob = 0
+        for operator_func, prob in operators:
+            cumulative_prob += prob
+            if rand_val <= cumulative_prob:
+                if operator_func == self._swap_night_with_off_neighbor:
+                    return operator_func(current_solution, num_swaps_for_swap_op)
+                else:
+                    return operator_func(current_solution)
+        
+        return self._swap_night_with_off_neighbor(current_solution, num_swaps_for_swap_op)
+    
+    def _calculate_num_swaps_for_op(self, temperature):
+        """Calculate the number of swaps based on current temperature."""
+        if self.initial_swap_percentage_k <= 0 or self.N <= 0:
+            return 1
+            
+        if self.initial_temperature > self.min_temperature: 
+            temp_ratio = (temperature - self.min_temperature) / (self.initial_temperature - self.min_temperature)
+            temp_ratio = max(0, min(1, temp_ratio)) 
+        else: 
+            temp_ratio = 1.0 if temperature >= self.initial_temperature else 0.0
+        
+        return max(1, int(round(self.max_swaps_at_start_calculated * temp_ratio)))
+    
+    def _local_search(self,
+                            initial_solution_func, 
+                            fitness_func,          
+                            neighbor_func,        
+                            max_iterations, 
+                            max_iterations_no_improvement, 
+                            time_limit_for_run_secs=None):
+        run_start_time = time.time()
+        current_solution = initial_solution_func()
+        current_fitness = fitness_func(current_solution)
+        
+        best_solution_in_run = copy.deepcopy(current_solution) 
+        best_fitness_in_run = current_fitness
+        temperature = self.initial_temperature
+
+        iterations_without_improvement_in_best = 0
+
+        for iteration in range(max_iterations):
+            # Check time limit
+            if time_limit_for_run_secs and (time.time() - run_start_time) > time_limit_for_run_secs:
+                break
+            
+            # Calculate how many swaps to perform based on temperature
+            num_swaps_for_op = self._calculate_num_swaps_for_op(temperature)
+
+            # Generate multiple neighbor solutions and select the best one
+            best_neighbor = None
+            best_neighbor_fitness = -float('inf')
+            
+            for _ in range(self.num_neighbors_to_explore_per_step):
+                neighbor = neighbor_func(current_solution, num_swaps_for_op)
+                neighbor_fitness = fitness_func(neighbor)
+                
+                if neighbor_fitness > best_neighbor_fitness:
+                    best_neighbor = copy.deepcopy(neighbor)
+                    best_neighbor_fitness = neighbor_fitness
+            
+            # Decide whether to accept the best neighbor solution
+            if best_neighbor_fitness >= current_fitness:
+                # Always accept better or equal solutions
+                current_solution = copy.deepcopy(best_neighbor)
+                current_fitness = best_neighbor_fitness
+                
+                # Update best solution if improved
+                if current_fitness > best_fitness_in_run:
+                    best_fitness_in_run = current_fitness
+                    best_solution_in_run = copy.deepcopy(current_solution)
+                    iterations_without_improvement_in_best = 0
+                else:
+                    iterations_without_improvement_in_best += 1
+            else:
+                # For worse solutions, accept with a probability based on temperature
+                delta_fitness = best_neighbor_fitness - current_fitness
+                if temperature > 1e-9:
+                    acceptance_probability = math.exp(delta_fitness / temperature)
+                    if random.random() < acceptance_probability:
+                        current_solution = copy.deepcopy(best_neighbor)
+                        current_fitness = best_neighbor_fitness
+                
+                iterations_without_improvement_in_best += 1
+                
+            # Cool down temperature
+            temperature = max(self.min_temperature, temperature * self.cooling_rate)
+
+            # Break if no improvement for a while
+            if iterations_without_improvement_in_best >= max_iterations_no_improvement:
+                break
+            
+        run_time = time.time() - run_start_time
+        return best_solution_in_run, best_fitness_in_run, run_time
+    
+    def _run_multi_start_search(self, overall_time_limit_secs_for_this_solve=None):
+        overall_start_time = time.time()
+        best_overall_solution = None
+        best_overall_fitness = -float('inf') 
+
+        for restart_num in range(self.num_restarts):
+            if overall_time_limit_secs_for_this_solve and \
+               (time.time() - overall_start_time) > overall_time_limit_secs_for_this_solve:
+                break
+            
+            time_left_for_sa_run = None
+            if overall_time_limit_secs_for_this_solve:
+                elapsed_time = time.time() - overall_start_time
+                time_left_for_sa_run = overall_time_limit_secs_for_this_solve - elapsed_time
+                if time_left_for_sa_run <= 0:
+                    break
+            
+            solution_from_sa, fitness_from_sa, run_time_one_restart = self._local_search(
+                initial_solution_func=self._create_initial_solution,
+                fitness_func=self._calculate_fitness,
+                neighbor_func=self._generate_neighbor, 
+                max_iterations=self.max_iterations_per_restart,
+                max_iterations_no_improvement=self.max_no_improvement_per_restart,
+                time_limit_for_run_secs=time_left_for_sa_run
+            )
+
+            if fitness_from_sa > best_overall_fitness:
+                best_overall_fitness = fitness_from_sa
+                best_overall_solution = copy.deepcopy(solution_from_sa) 
+                if self.verbose:
+                    print(f"Restart {restart_num + 1}: NEW BEST overall fitness = {best_overall_fitness:.4f} (run time: {run_time_one_restart:.2f}s)")
+            else:
+                if self.verbose:
+                    print(f"Restart {restart_num + 1}: No improvement (fitness {fitness_from_sa:.4f}). Best overall fitness still {best_overall_fitness:.4f} (run time: {run_time_one_restart:.2f}s)")
+
+        total_time_taken = time.time() - overall_start_time
+        return best_overall_solution, best_overall_fitness, total_time_taken
+    
+
+
+    def solve(self, N, D, A, B, pre_assigned_off_list_of_lists, time_limit_for_solve_secs=None):
+        self.N = N
+        self.D = D
+        self.A = A
+        self.B = B
+        
+        if self.N > 0:
+             self.max_swaps_at_start_calculated = max(1, int(self.N * self.initial_swap_percentage_k / 100.0))
+             self.max_swaps_at_start_calculated = min(self.max_swaps_at_start_calculated, self.max_swaps_per_op_cap)
+        else:
+            self.max_swaps_at_start_calculated = 1
+
+        # Initialize pre-assigned off days
+        self.IS_PRE_ASSIGNED_OFF = [[False for _ in range(self.D)] for _ in range(self.N)]
+        if self.N > 0 and self.D > 0: 
+            for staff_idx, days_off_for_staff in enumerate(pre_assigned_off_list_of_lists):
+                if staff_idx >= self.N: continue 
+                for day_input_val in days_off_for_staff:
+                    if day_input_val == -1: 
+                        break
+                    if 1 <= day_input_val <= self.D: 
+                        day_idx = day_input_val - 1 
+                        self.IS_PRE_ASSIGNED_OFF[staff_idx][day_idx] = True
+
+        # Handle edge cases
+        if self.N == 0:  # Handle N=0 case (empty output file, no runtime)
+            return [], 0, 0.00  # Return empty solution
+        
+        if self.D == 0:  # Handle D=0 case (N empty lines, with runtime)
+            empty_solution_d0 = [[] for _ in range(self.N)]
+            actual_runtime = 0.00 
+            return empty_solution_d0, 0, actual_runtime
+
+        # Normal case: run the algorithm
+        best_solution, best_fitness, run_time = self._run_multi_start_search(
+            overall_time_limit_secs_for_this_solve=time_limit_for_solve_secs
+        )
+
+        if best_solution is None: 
+            if self.N > 0 and self.D > 0:  # Only when N and D > 0 and no solution found
+                 best_solution = [[0 for _ in range(self.D)] for _ in range(self.N)]
+        
+        return best_solution, best_fitness, run_time
+
+def handle_output(solution, fitness, run_time, N, D, testcase_filename_original, output_dir, is_empty_case=False):
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+
+    output_filename = testcase_filename_original.replace(".txt", ".out")
+    output_filepath = os.path.join(output_dir, output_filename)
+    
+    with open(output_filepath, "w") as f:
+        if N == 0:  # Case N=0, empty output file (no runtime)
+            pass 
+        else:  # N > 0
+            if solution is not None:  # N > 0, has solution (could be D=0 or D>0)
+                for n_idx in range(N):
+                    # If D=0, solution[n_idx] is [], join results in "" (empty line)
+                    shifts_for_staff_n = [str(solution[n_idx][d_idx]) for d_idx in range(D)]
+                    line = " ".join(shifts_for_staff_n)
+                    f.write(line + "\n")
+            else:  # N > 0, but solution is None (e.g., algorithm failed)
+                    # Write N empty lines
+                for _ in range(N):
+                    f.write("\n")
+            f.write(f"{run_time:.2f}\n")  # Write runtime for all cases where N > 0
+
+if __name__ == "__main__":
+    
+    testcase_dir = "Testcase" 
+    output_dir = f"Output_ngocanhh"
+
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+        print(f"Created output directory: {output_dir}")
+    
+    testcases_files = [f for f in os.listdir(testcase_dir) if f.endswith(".txt")]
+    if not testcases_files:
+        print(f"NO .txt files found in {testcase_dir}. Please check the directory.")
+    testcases_files.sort()
+    
+    solver_config = {
+        "num_restarts": 10,  
+        "max_iterations_per_restart": 400, 
+        "max_no_improvement_per_restart": 100, 
+        "num_neighbors_to_explore_per_step": 10,
+        "initial_temperature": 100.0,
+        "cooling_rate": 0.99, 
+        "min_temperature": 0.05,
+        "initial_swap_percentage_k": 10.0, 
+        "max_swaps_per_op_cap": 15,
+        "verbose": False
+    }
+    TIME_LIMIT_PER_TESTCASE_SECS = 60
+
+    # Initialize solver once with configuration
+    solver = LocalSearchSolver(**solver_config)
+
+    total_execution_start_time = time.time()
+    for testcase_filename in testcases_files:
+        print(f"--- Processing: {testcase_filename} ---")
+        current_testcase_path = os.path.join(testcase_dir, testcase_filename)
+
+        pre_assigned_off_data_local = []
+        try:
+            with open(current_testcase_path, 'r') as f:
+                N_local, D_local, A_local, B_local = map(int, f.readline().split())
+                if N_local > 0: 
+                    for _ in range(N_local):
+                        line = f.readline()
+                        if line.strip(): 
+                            days_off_input = list(map(int, line.split()))
+                            pre_assigned_off_data_local.append(days_off_input)
+                        else: 
+                            pre_assigned_off_data_local.append([-1]) 
+        except Exception as e:
+            print(f"ERROR reading file {testcase_filename}: {e}")
+            continue 
+        
+        # Call solver.solve() for each testcase
+        solution, fitness, run_time = solver.solve(
+            N=N_local, 
+            D=D_local, 
+            A=A_local, 
+            B=B_local,
+            pre_assigned_off_list_of_lists=pre_assigned_off_data_local,
+            time_limit_for_solve_secs=TIME_LIMIT_PER_TESTCASE_SECS
+        )
+        
+        # Handle output using the standalone function
+        handle_output(
+            solution=solution,
+            fitness=fitness,
+            run_time=run_time,
+            N=N_local,
+            D=D_local,
+            testcase_filename_original=testcase_filename,
+            output_dir=output_dir,
+            is_empty_case=(N_local == 0 or D_local == 0)
+        )
+    total_execution_end_time = time.time()
+    print(f"\n--- ALL TESTCASES COMPLETED ---")
+    print(f"Total execution time: {total_execution_end_time - total_execution_start_time:.2f} seconds.")
+    print(f"Results saved in directory: {output_dir}")
+```
