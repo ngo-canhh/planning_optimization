@@ -16,6 +16,7 @@ My result: 27
 Time: Execution time: 190.45 seconds
 
 
+<<<<<<< HEAD
 ----------Hill climbing algorithm----------
 Use some parameters: Max_iteration = 1000
 My result: 27
@@ -27,3 +28,20 @@ Use some parameters: Max_iteration = 1000
 My result: 27
 Time: Execution time: 190.45 seconds
 
+=======
+----------ACO----------
+Use some parameters: number of ants = 15, max iteration = 30, alpha = 1, beta = 2, rho = 0.1
+My result: 25
+Time: Execution time: 1883.74 seconds
+
+
+
+----------SA----------
+Use some parameters:  T0=5000, alpha=0.99, max_iterations=500, iterations_per_temp=50
+My result: 27
+Time: Execution time: 1112.92 seconds
+
+-------------Simulated annealing ver nam ------------
+My result: 27
+Execution time: Execution time: 1886.34 seconds
+>>>>>>> 8512c271bdd9612a70e5f2b0b34363942d523086
