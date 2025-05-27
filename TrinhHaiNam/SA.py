@@ -15,9 +15,6 @@ def read_input_from_file(filename):
         for d in days[:-1]:
             dayoff[i][d] = 1
     return N, D, A, B, dayoff
-
-
-
 def initialize_solution(N, D, A, B, dayoff):
     X = np.zeros((N + 1, D + 1), dtype=int)
 
@@ -80,7 +77,7 @@ def generate_neighbor(X, N, D, dayoff):
         new_X[i][d + 1] = 0
     return new_X
 
-def simulated_annealing(N, D, A, B, dayoff, max_iter=10000):
+def simulated_annealing(N, D, A, B, dayoff, max_iter=50000):
     T = 100.0
     T_min = 1e-2
     alpha = 0.98
@@ -88,20 +85,22 @@ def simulated_annealing(N, D, A, B, dayoff, max_iter=10000):
 
     X = initialize_solution(N, D, A, B, dayoff)
     best_X = X.copy()
-    best_score = evaluate(X, N, D, A, B, dayoff)
-
+    current_score = evaluate(X, N, D, A, B, dayoff)
+    best_score = current_score
     while T > T_min and iteration < max_iter:
         for _ in range(100):
             neighbor = generate_neighbor(X, N, D, dayoff)
             score = evaluate(neighbor, N, D, A, B, dayoff)
-            delta = score - best_score
+            delta = score - current_score
             if delta < 0 or random.random() < math.exp(-delta / T):
                 X = neighbor
+                current_score = score
                 if score < best_score:
                     best_score = score
                     best_X = neighbor
+            iteration += 1
         T *= alpha
-        iteration += 1
+            
 
     return best_X, best_score
 
@@ -117,12 +116,9 @@ def print_max_night_shifts(X, N):
 
 # Main Execution
 if __name__ == "__main__":
-    file_base = "planning_optimization/Evaluate/Testcase/tc"
-    
-    
+    file_base = "planning_optimization/Evaluate/Testcase/tc"  
     tc = int(input("test case: "))
     input_file = f"{file_base}{tc}.txt"
-    
     start = time.time()
 
     N, D, A, B, dayoff = read_input_from_file(input_file)
