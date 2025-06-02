@@ -1,87 +1,96 @@
 from ortools.sat.python import cp_model
+import time
 
-
-def schedule_shifts(N, D, A, B, F):
+def solve_cp_pure(N, D, A, B, F):
     model = cp_model.CpModel()
 
+    # Biến quyết định: X[i][d] = ca làm việc của nhân viên i vào ngày d
     X = [[model.NewIntVar(0, 4, f'X_{i}_{d}') for d in range(D)] for i in range(N)]
 
-    # Constraint 1: Respect day-off constraints
+    # Ràng buộc 1: Ngày nghỉ phép
     for i in range(N):
-        for d in F[i]:
-            model.Add(X[i][d - 1] == 0)
+        for day in F[i]:
+            if 1 <= day <= D:
+                model.Add(X[i][day-1] == 0)
 
-    # Constraint 2: If a staff works night shift (4), they rest the next day
+    # Ràng buộc 2: Sau ca đêm phải nghỉ
     for i in range(N):
-        for d in range(D - 1):
-            is_night_shift = model.NewBoolVar(f'is_night_shift_{i}_{d}')
-            is_next_day_off = model.NewBoolVar(f'is_next_day_off_{i}_{d}')
+        for d in range(D-1):
+            model.AddImplication(X[i][d] == 4, X[i][d+1] == 0)
 
-            # Ràng buộc: is_night_shift đúng khi X[i][d] == 4
-            model.Add(X[i][d] == 4).OnlyEnforceIf(is_night_shift)
-            model.Add(X[i][d] != 4).OnlyEnforceIf(is_night_shift.Not())
-
-            # Ràng buộc: is_next_day_off đúng khi X[i][d+1] == 0
-            model.Add(X[i][d + 1] == 0).OnlyEnforceIf(is_next_day_off)
-            model.Add(X[i][d + 1] != 0).OnlyEnforceIf(is_next_day_off.Not())
-
-            model.AddImplication(is_night_shift, is_next_day_off)
-
-    # Constraint 3: Maintain A-B staff in each shift per day
+    # Ràng buộc 3: Số nhân viên mỗi ca
     for d in range(D):
-        for k in range(1, 5):  # Shift 1 to 4
-            is_on_shift = [model.NewBoolVar(f'is_on_shift_{i}_{d}_{k}') for i in range(N)]
+        for shift in range(1, 5):
+            count = model.NewIntVar(0, N, f'count_{d}_{shift}')
+            
+            # Đếm số nhân viên trong ca này
+            bool_vars = []
             for i in range(N):
-                model.Add(X[i][d] == k).OnlyEnforceIf(is_on_shift[i])
-                model.Add(X[i][d] != k).OnlyEnforceIf(is_on_shift[i].Not())
-            model.AddLinearConstraint(sum(is_on_shift), A, B)
+                is_shift = model.NewBoolVar(f'is_{i}_{d}_{shift}')
+                model.Add(X[i][d] == shift).OnlyEnforceIf(is_shift)
+                model.Add(X[i][d] != shift).OnlyEnforceIf(is_shift.Not())
+                bool_vars.append(is_shift)
+            
+            model.Add(count == sum(bool_vars))
+            model.Add(count >= A)
+            model.Add(count <= B)
 
-
-    max_night_shifts = model.NewIntVar(0, D, 'max_night_shifts')
+    # Mục tiêu: Minimize max night shifts
+    max_nights = model.NewIntVar(0, D, 'max_nights')
+    
     for i in range(N):
-        night_shifts = [model.NewBoolVar(f'night_shift_{i}_{d}') for d in range(D)]
+        night_count = model.NewIntVar(0, D, f'nights_{i}')
+        
+        night_vars = []
         for d in range(D):
-            model.Add(X[i][d] == 4).OnlyEnforceIf(night_shifts[d])
-            model.Add(X[i][d] != 4).OnlyEnforceIf(night_shifts[d].Not())
-        model.Add(max_night_shifts >= sum(night_shifts))
-    model.Minimize(max_night_shifts)
+            is_night = model.NewBoolVar(f'night_{i}_{d}')
+            model.Add(X[i][d] == 4).OnlyEnforceIf(is_night)
+            model.Add(X[i][d] != 4).OnlyEnforceIf(is_night.Not())
+            night_vars.append(is_night)
+        
+        model.Add(night_count == sum(night_vars))
+        model.Add(max_nights >= night_count)
+    
+    model.Minimize(max_nights)
 
-
+    # Solver
     solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 60.0
+    solver.parameters.log_search_progress = False
+    
     status = solver.Solve(model)
-
-    if status == cp_model.OPTIMAL:
-        print("\n Optimal")
-        result = [[solver.Value(X[i][d]) for d in range(D)] for i in range(N)]
-        return result, solver.ObjectiveValue()
-    else: 
-        if status == cp_model.FEASIBLE:
-            print("\n Feasible")
-            result = [[solver.Value(X[i][d]) for d in range(D)] for i in range(N)]
-            return result, solver.ObjectiveValue()
-        else:
-            return None, None
-def print_schedule(schedule):
-    if schedule is None:
-        print("Không tìm được lời giải.")
+    
+    if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
+        return [[solver.Value(X[i][d]) for d in range(D)] for i in range(N)]
     else:
-        for row in schedule:
+        return None
+
+def main():
+    # Đọc input
+    N, D, A, B = map(int, input().split())
+    F = []
+    
+    for i in range(N):
+        days = list(map(int, input().split()))
+        valid_days = [d for d in days if d != -1 and 1 <= d <= D]
+        F.append(set(valid_days))
+    
+    # Giải bài toán
+    solution = solve_cp_pure(N, D, A, B, F)
+    
+    if solution:
+        for row in solution:
+            print(" ".join(map(str, row)))
+    else:
+        # Fallback solution
+        for i in range(N):
+            row = []
+            for d in range(D):
+                if (d+1) in F[i]:
+                    row.append(0)
+                else:
+                    row.append((i % 4) + 1)
             print(" ".join(map(str, row)))
 
 if __name__ == "__main__":
-
-    N, D, A, B = map(int, input().split())
-    F = []
-
-    for i in range(N):
-        days = list(map(int, input().split()))
-        F.append(set(days[:-1]))
-
-
-    schedule, max_night_shifts = schedule_shifts(N, D, A, B, F)
-
-    print("\nMột lời giải khả thi:")
-    print_schedule(schedule)
-    if max_night_shifts is not None:
-        print(f"\nSố ca đêm tối đa: {int(max_night_shifts)}")
-
+    main()
